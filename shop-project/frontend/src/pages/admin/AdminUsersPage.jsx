@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  ChevronDown,
-  Edit3,
+  AlertTriangle,
   Mail,
   RefreshCw,
   Search,
-  Shield,
-  ShieldCheck,
   Trash2,
   UserRound,
   Users,
@@ -17,15 +14,15 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 
 const ROLE_LABELS = {
-  customer: 'Khách hàng',
-  staff: 'Nhân viên',
-  admin: 'Quản trị viên',
+  customer: 'Customer',
+  staff: 'Staff',
+  admin: 'Admin',
 };
 
 const ROLE_CLASSES = {
-  customer: 'admin-user-role-customer',
-  staff: 'admin-user-role-staff',
-  admin: 'admin-user-role-admin',
+  customer: 'admin-users-role-customer',
+  staff: 'admin-users-role-staff',
+  admin: 'admin-users-role-admin',
 };
 
 const getUserId = (user) => user?._id || user?.id;
@@ -34,11 +31,11 @@ const getErrorMessage = (error, fallback) =>
   error.response?.data?.message || error.response?.data?.error || fallback;
 
 const formatDate = (date) => {
-  if (!date) return 'Chưa cập nhật';
+  if (!date) return 'Not available';
   const parsedDate = new Date(date);
   return Number.isNaN(parsedDate.getTime())
-    ? 'Chưa cập nhật'
-    : parsedDate.toLocaleDateString('vi-VN', {
+    ? 'Not available'
+    : parsedDate.toLocaleDateString('en-US', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -63,8 +60,7 @@ const AdminUsersPage = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const [editingId, setEditingId] = useState(null);
-  const [selectedRole, setSelectedRole] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -73,7 +69,7 @@ const AdminUsersPage = () => {
       const receivedUsers = response.data?.users;
       setUsers(Array.isArray(receivedUsers) ? receivedUsers : []);
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Không thể tải danh sách người dùng'));
+      toast.error(getErrorMessage(error, 'Unable to load users'));
     } finally {
       setLoading(false);
     }
@@ -83,89 +79,69 @@ const AdminUsersPage = () => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const counts = useMemo(
-    () =>
-      users.reduce(
-        (result, account) => {
-          result.all += 1;
-          if (result[account.role] !== undefined) result[account.role] += 1;
-          return result;
-        },
-        { all: 0, customer: 0, staff: 0, admin: 0 }
-      ),
-    [users]
-  );
+  useEffect(() => {
+    if (!deleteTarget) return undefined;
 
-  const filteredUsers = useMemo(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !deletingId) setDeleteTarget(null);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deleteTarget, deletingId]);
+
+  const visibleUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return users
-      .filter((account) => {
-        const matchesQuery =
-          !normalizedQuery ||
-          [account.name, account.email].some((value) =>
-            String(value || '').toLowerCase().includes(normalizedQuery)
-          );
-        return matchesQuery && (roleFilter === 'all' || account.role === roleFilter);
-      })
-      .sort((first, second) => String(first.name || '').localeCompare(String(second.name || '')));
+
+    return users.filter((user) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        [user.name, user.email, user.role]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(normalizedQuery));
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      return matchesQuery && matchesRole;
+    });
   }, [query, roleFilter, users]);
 
-  const isCurrentUser = (account) =>
-    Boolean(currentUser && getUserId(account) === getUserId(currentUser));
-
-  const startEditing = (account) => {
-    setEditingId(getUserId(account));
-    setSelectedRole(account.role);
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setSelectedRole('');
-  };
-
-  const updateRole = async (account) => {
-    const accountId = getUserId(account);
-    if (!accountId || selectedRole === account.role) {
-      cancelEditing();
-      return;
-    }
+  const handleRoleChange = async (user, role) => {
+    const userId = getUserId(user);
+    if (!userId || role === user.role) return;
 
     try {
-      setUpdatingId(accountId);
-      const response = await api.put(`/api/admin/users/${accountId}/role`, {
-        role: selectedRole,
-      });
+      setUpdatingId(userId);
+      const response = await api.put(`/api/admin/users/${userId}/role`, { role });
       const updatedUser = response.data?.user;
+
       setUsers((currentUsers) =>
         currentUsers.map((currentUserItem) =>
-          getUserId(currentUserItem) === accountId
-            ? updatedUser || { ...currentUserItem, role: selectedRole }
+          getUserId(currentUserItem) === userId
+            ? { ...currentUserItem, ...(updatedUser || { role }) }
             : currentUserItem
         )
       );
-      toast.success(`Đã cập nhật quyền của ${account.name}`);
-      cancelEditing();
+      toast.success('User role updated successfully');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Không thể cập nhật quyền người dùng'));
+      toast.error(getErrorMessage(error, 'Unable to update user role'));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const revokeAccount = async (account) => {
-    const accountId = getUserId(account);
-    if (!accountId || isCurrentUser(account)) return;
-    if (!window.confirm(`Thu hồi tài khoản của ${account.name || account.email}?`)) return;
+  const confirmDelete = async () => {
+    const userId = getUserId(deleteTarget);
+    if (!userId) return;
 
     try {
-      setDeletingId(accountId);
-      await api.delete(`/api/admin/users/${accountId}`);
+      setDeletingId(userId);
+      await api.delete(`/api/admin/users/${userId}`);
       setUsers((currentUsers) =>
-        currentUsers.filter((currentUserItem) => getUserId(currentUserItem) !== accountId)
+        currentUsers.filter((currentUserItem) => getUserId(currentUserItem) !== userId)
       );
-      toast.success('Đã thu hồi tài khoản');
+      setDeleteTarget(null);
+      toast.success('User account deleted successfully');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Không thể thu hồi tài khoản'));
+      toast.error(getErrorMessage(error, 'Unable to delete user account'));
     } finally {
       setDeletingId(null);
     }
@@ -175,112 +151,187 @@ const AdminUsersPage = () => {
     <div className="admin-users-page">
       <style>{`
         .admin-users-page { min-height: 100vh; padding: 36px clamp(16px, 4vw, 56px) 56px; background: #f8fafc; color: #0f172a; }
+        .admin-users-page .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         .admin-users-shell { max-width: 1440px; margin: 0 auto; }
         .admin-users-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
         .admin-users-eyebrow { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
         .admin-users-header h1 { margin: 8px 0 6px; font-size: clamp(26px, 4vw, 36px); letter-spacing: -.04em; }
         .admin-users-header p { color: #64748b; font-size: 14px; }
-        .admin-users-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; padding: 10px 14px; font: inherit; font-size: 13px; font-weight: 700; transition: .2s; }
-        .admin-users-button:hover:not(:disabled) { background: #f1f5f9; }
-        .admin-users-button:disabled { cursor: not-allowed; opacity: .6; }
-        .admin-users-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
-        .admin-users-stat { display: flex; align-items: center; gap: 13px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; padding: 17px; box-shadow: 0 4px 16px rgb(15 23 42 / 4%); }
-        .admin-users-stat-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: #f1f5f9; color: #475569; }
-        .admin-users-stat strong { display: block; font-size: 20px; line-height: 1.1; }
-        .admin-users-stat span { display: block; color: #64748b; font-size: 11px; margin-top: 4px; }
-        .admin-users-card { min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 4px 16px rgb(15 23 42 / 5%); }
-        .admin-users-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px; border-bottom: 1px solid #e2e8f0; }
-        .admin-users-toolbar h2 { font-size: 18px; }
-        .admin-users-toolbar p { color: #64748b; font-size: 12px; margin-top: 4px; }
-        .admin-users-tools { display: flex; gap: 8px; }
-        .admin-users-search { position: relative; min-width: 230px; }
-        .admin-users-search svg { position: absolute; top: 10px; left: 10px; color: #94a3b8; }
-        .admin-users-search input, .admin-users-role-filter select, .admin-users-role-editor select { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; padding: 10px 12px; }
-        .admin-users-search input { padding-left: 33px; }
-        .admin-users-search input:focus, .admin-users-role-filter select:focus, .admin-users-role-editor select:focus { outline: none; border-color: #475569; box-shadow: 0 0 0 3px rgb(71 85 105 / 12%); }
-        .admin-users-role-filter { position: relative; min-width: 145px; }
-        .admin-users-role-filter svg { position: absolute; pointer-events: none; right: 10px; top: 11px; color: #64748b; }
-        .admin-users-role-filter select { appearance: none; padding-right: 30px; }
+        .admin-users-card { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 4px 16px rgb(15 23 42 / 5%); }
+        .admin-users-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; border-bottom: 1px solid #e2e8f0; }
+        .admin-users-filters { display: flex; flex: 1; gap: 10px; min-width: 0; }
+        .admin-users-search { position: relative; flex: 1; max-width: 420px; }
+        .admin-users-search svg { position: absolute; top: 11px; left: 11px; color: #94a3b8; }
+        .admin-users-search input, .admin-users-filter { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; padding: 10px 12px; }
+        .admin-users-search input { padding-left: 36px; }
+        .admin-users-search input:focus, .admin-users-filter:focus { outline: none; border-color: #475569; box-shadow: 0 0 0 3px rgb(71 85 105 / 12%); }
+        .admin-users-refresh { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; border-radius: 9px; padding: 10px 14px; color: #334155; font: inherit; font-size: 13px; font-weight: 700; white-space: nowrap; }
+        .admin-users-refresh:hover:not(:disabled) { background: #f8fafc; }
+        .admin-users-refresh:disabled { cursor: not-allowed; opacity: .6; }
+        .admin-users-spin { animation: admin-users-spin .7s linear infinite; }
         .admin-users-table-wrap { overflow-x: auto; }
         .admin-users-table { width: 100%; min-width: 760px; border-collapse: collapse; }
-        .admin-users-table th { background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: .04em; padding: 12px 20px; text-align: left; text-transform: uppercase; white-space: nowrap; }
-        .admin-users-table td { border-top: 1px solid #f1f5f9; padding: 14px 20px; font-size: 13px; vertical-align: middle; }
-        .admin-users-table tbody tr:hover { background: #fafafa; }
-        .admin-users-profile { display: flex; align-items: center; gap: 11px; min-width: 210px; }
-        .admin-users-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; overflow: hidden; border-radius: 50%; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 800; }
-        .admin-users-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .admin-users-name { display: block; color: #0f172a; font-weight: 800; }
-        .admin-users-email { display: flex; align-items: center; gap: 5px; color: #64748b; font-size: 12px; margin-top: 2px; }
-        .admin-users-role { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; white-space: nowrap; }
-        .admin-user-role-customer { background: #f1f5f9; color: #475569; }
-        .admin-user-role-staff { background: #fef3c7; color: #a16207; }
-        .admin-user-role-admin { background: #ede9fe; color: #6d28d9; }
-        .admin-users-current { color: #64748b; font-size: 11px; font-weight: 700; margin-left: 6px; }
-        .admin-users-actions { display: flex; justify-content: flex-end; gap: 4px; white-space: nowrap; }
-        .admin-users-icon-button { display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; color: #64748b; padding: 7px; }
-        .admin-users-icon-button:hover:not(:disabled) { background: #f1f5f9; color: #0f172a; }
-        .admin-users-icon-button-danger:hover:not(:disabled) { background: #fef2f2; color: #dc2626; }
-        .admin-users-role-editor { display: flex; align-items: center; gap: 6px; }
-        .admin-users-role-editor select { min-width: 130px; padding: 7px 9px; }
-        .admin-users-save { display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; background: #0f172a; color: #fff; padding: 7px; }
-        .admin-users-save:hover:not(:disabled) { background: #1e293b; }
-        .admin-users-cancel { display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; color: #64748b; padding: 7px; }
-        .admin-users-cancel:hover { background: #f1f5f9; color: #0f172a; }
-        .admin-users-empty, .admin-users-loading { display: grid; place-items: center; gap: 8px; min-height: 230px; padding: 28px; color: #64748b; text-align: center; font-size: 13px; }
-        .admin-users-spin { animation: admin-users-spin 1s linear infinite; }
+        .admin-users-table th { padding: 14px 22px; background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+        .admin-users-table td { padding: 17px 22px; border-top: 1px solid #f1f5f9; color: #334155; font-size: 13px; vertical-align: middle; }
+        .admin-users-table tbody tr:hover { background: #fafcff; }
+        .admin-users-person { display: flex; align-items: center; gap: 11px; }
+        .admin-users-avatar { display: grid; flex: 0 0 36px; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 800; object-fit: cover; }
+        .admin-users-name { color: #0f172a; font-weight: 700; }
+        .admin-users-email { display: flex; align-items: center; gap: 6px; color: #64748b; }
+        .admin-users-role { display: inline-flex; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 800; }
+        .admin-users-role-customer { background: #f1f5f9; color: #475569; }
+        .admin-users-role-staff { background: #fffbeb; color: #b45309; }
+        .admin-users-role-admin { background: #eef2ff; color: #4338ca; }
+        .admin-users-role-select { border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 9px; background: #fff; color: #334155; font: inherit; font-size: 12px; }
+        .admin-users-role-select:disabled { cursor: wait; opacity: .6; }
+        .admin-users-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .admin-users-action { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #64748b; }
+        .admin-users-action:hover:not(:disabled) { background: #f8fafc; color: #0f172a; }
+        .admin-users-action-delete:hover:not(:disabled) { border-color: #fecaca; background: #fef2f2; color: #dc2626; }
+        .admin-users-action:disabled { cursor: not-allowed; opacity: .45; }
+        .admin-users-empty, .admin-users-loading { display: grid; place-items: center; gap: 10px; min-height: 250px; padding: 32px; color: #64748b; text-align: center; font-size: 13px; }
+        .admin-users-empty svg { color: #94a3b8; }
+        .admin-users-modal-copy { padding: 24px; color: #475569; font-size: 14px; }
+        .admin-users-modal-copy strong { color: #0f172a; }
+        .admin-users-modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 24px 24px; }
+        .admin-users-modal-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; padding: 10px 14px; font: inherit; font-size: 13px; font-weight: 700; }
+        .admin-users-modal-cancel { border: 1px solid #cbd5e1; color: #334155; }
+        .admin-users-modal-confirm { background: #dc2626; color: #fff; }
+        .admin-users-modal-button:disabled { cursor: not-allowed; opacity: .6; }
         @keyframes admin-users-spin { to { transform: rotate(360deg); } }
-        @media (max-width: 900px) { .admin-users-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 650px) { .admin-users-page { padding-top: 24px; } .admin-users-header { align-items: flex-start; flex-direction: column; } .admin-users-toolbar { align-items: stretch; flex-direction: column; } .admin-users-tools { flex-direction: column; } .admin-users-search, .admin-users-role-filter { min-width: 0; } }
+        @media (max-width: 700px) {
+          .admin-users-header { align-items: flex-start; flex-direction: column; }
+          .admin-users-toolbar { align-items: stretch; flex-direction: column; }
+          .admin-users-filters { flex-direction: column; }
+          .admin-users-search { max-width: none; }
+          .admin-users-refresh { justify-content: center; }
+        }
       `}</style>
 
       <div className="admin-users-shell">
         <header className="admin-users-header">
           <div>
-            <div className="admin-users-eyebrow"><ShieldCheck size={15} /> Quản trị hệ thống</div>
-            <h1>Quản lý người dùng</h1>
-            <p>Phân quyền và quản lý quyền truy cập của các tài khoản trong hệ thống.</p>
+            <div className="admin-users-eyebrow"><Users size={16} /> Administration</div>
+            <h1>User Management</h1>
+            <p>Review registered users and manage their access roles.</p>
           </div>
-          <button type="button" className="admin-users-button" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw size={15} className={loading ? 'admin-users-spin' : ''} /> Làm mới
-          </button>
         </header>
 
-        <section className="admin-users-summary" aria-label="Tổng quan người dùng">
-          <div className="admin-users-stat"><div className="admin-users-stat-icon"><Users size={18} /></div><div><strong>{counts.all}</strong><span>Tổng tài khoản</span></div></div>
-          <div className="admin-users-stat"><div className="admin-users-stat-icon"><UserRound size={18} /></div><div><strong>{counts.customer}</strong><span>Khách hàng</span></div></div>
-          <div className="admin-users-stat"><div className="admin-users-stat-icon"><Shield size={18} /></div><div><strong>{counts.staff}</strong><span>Nhân viên</span></div></div>
-          <div className="admin-users-stat"><div className="admin-users-stat-icon"><ShieldCheck size={18} /></div><div><strong>{counts.admin}</strong><span>Quản trị viên</span></div></div>
-        </section>
-
-        <section className="admin-users-card">
+        <section className="admin-users-card" aria-label="Registered users">
           <div className="admin-users-toolbar">
-            <div><h2>Tất cả tài khoản</h2><p>{filteredUsers.length} tài khoản được hiển thị</p></div>
-            <div className="admin-users-tools">
-              <div className="admin-users-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên hoặc email..." aria-label="Tìm người dùng" /></div>
-              <label className="admin-users-role-filter"><ChevronDown size={15} /><select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} aria-label="Lọc vai trò"><option value="all">Tất cả vai trò</option><option value="customer">Khách hàng</option><option value="staff">Nhân viên</option><option value="admin">Quản trị viên</option></select></label>
+            <div className="admin-users-filters">
+              <label className="admin-users-search">
+                <Search size={16} aria-hidden="true" />
+                <span className="sr-only">Search users</span>
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search by name or email"
+                  onChange={(event) => setQuery(event.target.value)}
+                />
+              </label>
+              <select
+                className="admin-users-filter"
+                aria-label="Filter by role"
+                value={roleFilter}
+                onChange={(event) => setRoleFilter(event.target.value)}
+              >
+                <option value="all">All roles</option>
+                {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                  <option key={role} value={role}>{label}</option>
+                ))}
+              </select>
             </div>
+            <button
+              type="button"
+              className="admin-users-refresh"
+              onClick={fetchUsers}
+              disabled={loading}
+            >
+              <RefreshCw size={15} className={loading ? 'admin-users-spin' : ''} />
+              Refresh
+            </button>
           </div>
 
           {loading ? (
-            <div className="admin-users-loading"><RefreshCw size={23} className="admin-users-spin" /> Đang tải danh sách người dùng...</div>
-          ) : filteredUsers.length === 0 ? (
-            <div className="admin-users-empty"><Users size={25} />{users.length ? 'Không tìm thấy tài khoản phù hợp.' : 'Chưa có người dùng nào.'}</div>
+            <div className="admin-users-loading" role="status" aria-live="polite">
+              <RefreshCw size={24} className="admin-users-spin" />
+              Loading users...
+            </div>
+          ) : visibleUsers.length === 0 ? (
+            <div className="admin-users-empty">
+              <UserRound size={32} />
+              <span>{users.length ? 'No users match your filters.' : 'No registered users found.'}</span>
+            </div>
           ) : (
             <div className="admin-users-table-wrap">
               <table className="admin-users-table">
-                <thead><tr><th>Người dùng</th><th>Vai trò</th><th>Ngày tham gia</th><th>Địa chỉ</th><th aria-label="Thao tác" /></tr></thead>
+                <caption className="sr-only">Registered system users</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Joined</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {filteredUsers.map((account) => {
-                    const accountId = getUserId(account);
-                    const ownAccount = isCurrentUser(account);
-                    const editing = editingId === accountId;
+                  {visibleUsers.map((user) => {
+                    const userId = getUserId(user);
+                    const isCurrentUser = userId === getUserId(currentUser);
+                    const isUpdating = updatingId === userId;
+                    const isDeleting = deletingId === userId;
+
                     return (
-                      <tr key={accountId || account.email}>
-                        <td><div className="admin-users-profile"><div className="admin-users-avatar">{account.avatar ? <img src={account.avatar} alt="" /> : getInitials(account.name, account.email)}</div><div><span className="admin-users-name">{account.name || 'Chưa đặt tên'}{ownAccount && <span className="admin-users-current">Bạn</span>}</span><span className="admin-users-email"><Mail size={12} />{account.email}</span></div></div></td>
-                        <td>{editing ? <div className="admin-users-role-editor"><select value={selectedRole} onChange={(event) => setSelectedRole(event.target.value)} aria-label={`Vai trò của ${account.name}`}><option value="customer">Khách hàng</option><option value="staff">Nhân viên</option><option value="admin">Quản trị viên</option></select><button type="button" className="admin-users-save" onClick={() => updateRole(account)} disabled={updatingId === accountId} aria-label="Lưu vai trò">{updatingId === accountId ? <RefreshCw size={14} className="admin-users-spin" /> : <ShieldCheck size={14} />}</button><button type="button" className="admin-users-cancel" onClick={cancelEditing} aria-label="Hủy sửa"><X size={14} /></button></div> : <span className={`admin-users-role ${ROLE_CLASSES[account.role] || ROLE_CLASSES.customer}`}>{ROLE_LABELS[account.role] || account.role || 'Khách hàng'}</span>}</td>
-                        <td>{formatDate(account.createdAt)}</td>
-                        <td>{account.addresses?.length ? `${account.addresses.length} địa chỉ` : 'Chưa có'}</td>
-                        <td><div className="admin-users-actions">{!ownAccount && <><button type="button" className="admin-users-icon-button" onClick={() => startEditing(account)} disabled={editing || deletingId === accountId} aria-label={`Đổi vai trò cho ${account.name}`}><Edit3 size={15} /></button><button type="button" className="admin-users-icon-button admin-users-icon-button-danger" onClick={() => revokeAccount(account)} disabled={deletingId === accountId || updatingId === accountId} aria-label={`Thu hồi ${account.name}`}>{deletingId === accountId ? <RefreshCw size={15} className="admin-users-spin" /> : <Trash2 size={15} />}</button></>}</div></td>
+                      <tr key={userId || user.email}>
+                        <td>
+                          <div className="admin-users-person">
+                            {user.avatar ? (
+                              <img className="admin-users-avatar" src={user.avatar} alt="" />
+                            ) : (
+                              <span className="admin-users-avatar" aria-hidden="true">
+                                {getInitials(user.name, user.email)}
+                              </span>
+                            )}
+                            <div>
+                              <div className="admin-users-name">{user.name || 'Unnamed user'}</div>
+                              <div className="admin-users-email"><Mail size={13} />{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`admin-users-role ${ROLE_CLASSES[user.role] || ROLE_CLASSES.customer}`}>
+                            {ROLE_LABELS[user.role] || user.role || 'Unknown'}
+                          </span>
+                        </td>
+                        <td>{formatDate(user.createdAt)}</td>
+                        <td>
+                          <div className="admin-users-actions">
+                            <label>
+                              <span className="sr-only">Change role for {user.name || user.email}</span>
+                              <select
+                                className="admin-users-role-select"
+                                value={user.role || 'customer'}
+                                onChange={(event) => handleRoleChange(user, event.target.value)}
+                                disabled={isCurrentUser || isUpdating || isDeleting}
+                              >
+                                {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                                  <option key={role} value={role}>{label}</option>
+                                ))}
+                              </select>
+                            </label>
+                            <button
+                              type="button"
+                              className="admin-users-action admin-users-action-delete"
+                              aria-label={`Delete ${user.name || user.email}`}
+                              title={isCurrentUser ? 'You cannot delete your own account' : 'Delete user'}
+                              onClick={() => setDeleteTarget(user)}
+                              disabled={isCurrentUser || isUpdating || isDeleting}
+                            >
+                              {isDeleting ? <RefreshCw size={16} className="admin-users-spin" /> : <Trash2 size={16} />}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
@@ -290,6 +341,57 @@ const AdminUsersPage = () => {
           )}
         </section>
       </div>
+
+      {deleteTarget && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deletingId) setDeleteTarget(null);
+          }}
+        >
+          <div className="modal-card animate-scale-up" role="alertdialog" aria-modal="true" aria-labelledby="delete-user-title">
+            <div className="modal-header">
+              <h3 id="delete-user-title">Delete user account?</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                aria-label="Close confirmation"
+                onClick={() => setDeleteTarget(null)}
+                disabled={Boolean(deletingId)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="admin-users-modal-copy">
+              <AlertTriangle size={22} color="#dc2626" aria-hidden="true" />
+              <p>
+                This permanently deletes <strong>{deleteTarget.name || deleteTarget.email}</strong>
+                {' '}and cannot be undone.
+              </p>
+            </div>
+            <div className="admin-users-modal-actions">
+              <button
+                type="button"
+                className="admin-users-modal-button admin-users-modal-cancel"
+                onClick={() => setDeleteTarget(null)}
+                disabled={Boolean(deletingId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-users-modal-button admin-users-modal-confirm"
+                onClick={confirmDelete}
+                disabled={Boolean(deletingId)}
+              >
+                {deletingId ? <RefreshCw size={15} className="admin-users-spin" /> : <Trash2 size={15} />}
+                Delete account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
