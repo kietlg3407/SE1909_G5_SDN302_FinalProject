@@ -1,20 +1,20 @@
 const mongoose = require('mongoose');
-const dns = require('dns');
-
-// Fix lỗi querySrv ECONNREFUSED do DNS cục bộ/mạng chặn SRV query của MongoDB Atlas
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {
-  console.log('Không thể set DNS server tuỳ chỉnh:', e.message);
-}
 
 const connectDB = async () => {
+  const connectionUri = process.env.MONGO_URI;
+
+  if (!connectionUri) {
+    const error = new Error('MONGO_URI environment variable is not set');
+    console.error(`MongoDB connection failed: ${error.message}`);
+    throw error;
+  }
+
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    await mongoose.connect(connectionUri);
+    console.log('Connection successful');
   } catch (error) {
-    console.error(`Lỗi kết nối MongoDB: ${error.message}`);
-    process.exit(1);
+    console.error(`MongoDB connection failed: ${error.message}`);
+    throw error;
   }
 };
 
