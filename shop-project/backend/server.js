@@ -17,6 +17,9 @@ app.get('/', (req, res) => {
 
 // Routes API
 app.use('/api/users', require('./src/routes/userRoutes'));
+app.use('/api/favorites', require('./src/routes/favoriteRoutes'));
+app.use('/api', require('./src/routes/reviewRoutes'));
+app.use('/api', require('./src/routes/commentRoutes'));
 app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/admin/stats', require('./src/routes/statsRoutes'));
