@@ -14,3 +14,16 @@ credentials/
 # Build outputs
 dist/
 build/
+
+# Testing & Coverage
+coverage/
+*.lcov
+.nyc_output/
+tests/
+test/
+__tests__/
+*.test.*
+*.spec.*
+jest.config.*
+TEST_REPORT*.md
+TEST_SUMMARY*.md

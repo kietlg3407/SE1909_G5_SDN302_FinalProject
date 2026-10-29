@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ShieldX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -37,20 +37,13 @@ const UnauthorizedState = () => {
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return <LoadingState />;
   }
 
   if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
-      />
-    );
+    return <Navigate to="/login" replace />;
   }
 
   if (user.role !== 'admin') {

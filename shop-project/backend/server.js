@@ -23,9 +23,30 @@ app.use('/api/admin/stats', require('./src/routes/statsRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
+const Coupon = require('./src/models/couponModel');
+
+const initDefaultCoupons = async () => {
+  try {
+    const welcomeCoupon = await Coupon.findOne({ code: 'WELCOME10' });
+    if (!welcomeCoupon) {
+      await Coupon.create({
+        code: 'WELCOME10',
+        discountType: 'percentage',
+        discountValue: 10,
+        minOrderValue: 0,
+        usageLimit: null,
+      });
+      console.log('[System] Khởi tạo mã mặc định WELCOME10 (giảm 10% thành viên mới) thành công');
+    }
+  } catch (err) {
+    console.warn('[System] Khởi tạo mã WELCOME10:', err.message);
+  }
+};
+
 const startServer = async () => {
   try {
     await connectDB();
+    await initDefaultCoupons();
 
     app.listen(PORT, () => {
       console.log(`Server đang chạy ở chế độ ${process.env.NODE_ENV || 'development'} trên cổng ${PORT}`);
@@ -36,4 +57,9 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start server if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+module.exports = app;

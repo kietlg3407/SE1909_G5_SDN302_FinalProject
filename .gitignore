@@ -35,11 +35,68 @@ lerna-debug.log*
 
 # Editor / OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 .vscode/
+!.vscode/extensions.json
 .idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.temp
+
+# Testing & Coverage
+coverage/
+*/coverage/
+*.lcov
+.nyc_output/
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+allure-results/
+allure-report/
+
+# Test Files & Directories
+tests/
+test/
+__tests__/
+__mocks__/
+*.test.*
+*.spec.*
+
+# Test Configuration Files
+jest.config.*
+vitest.config.*
+playwright.config.*
+cypress.config.*
+
+# Test Reports & Summaries
+TEST_REPORT*.md
+TEST_SUMMARY*.md
+
+# Agent Task & Coordination Summaries
+TASK_*_COORDINATION_SUMMARY.md
+*COORDINATION_SUMMARY*.md
+
+# Caches & Temporary build files
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.turbo/
+.vite/
+vite.config.*.timestamp-*
+*.tsbuildinfo

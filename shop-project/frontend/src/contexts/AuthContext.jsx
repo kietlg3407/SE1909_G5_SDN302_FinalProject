@@ -147,8 +147,12 @@ export const AuthProvider = ({ children }) => {
       const userData = response.data;
 
       applyAuth(userData, userData.token);
-      toast.success('Đăng ký tài khoản thành công!');
-      return { success: true, user: userData };
+      if (userData.voucher?.code) {
+        toast.success(`🎉 Đăng ký thành công! Bạn nhận được Voucher 10%: Mã [${userData.voucher.code}]`, { duration: 6000 });
+      } else {
+        toast.success('Đăng ký tài khoản thành công!');
+      }
+      return { success: true, user: userData, voucher: userData.voucher };
     } catch (error) {
       const message = getErrorMessage(
         error,

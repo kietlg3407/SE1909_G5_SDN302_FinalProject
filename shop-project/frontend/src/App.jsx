@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
@@ -22,7 +22,7 @@ const NotFound = () => (
       <h1>404</h1>
       <h2>Không Tìm Thấy Trang</h2>
       <p>Trang bạn đang tìm kiếm không tồn tại hoặc đã bị di chuyển.</p>
-      <a href="/" className="btn-primary">Quay Về Trang Chủ</a>
+      <Link to="/" className="btn-primary">Quay Về Trang Chủ</Link>
     </div>
   </div>
 );
@@ -67,6 +67,7 @@ function App() {
           }}
         />
         <Routes>
+          {/* Public & Customer Routes */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<HomePage />} />
@@ -96,12 +97,13 @@ function App() {
             />
           </Route>
 
-          <Route element={<AdminRoute />}>
+          {/* Admin Protected Routes - chỉ áp dụng cho tiền tố /admin */}
+          <Route path="/admin" element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="/admin/dashboard" element={<DashboardPage />} />
-              <Route path="/admin/users" element={<AdminUsersPage />} />
-              <Route path="/admin/coupons" element={<CouponsPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="coupons" element={<CouponsPage />} />
             </Route>
           </Route>
 
