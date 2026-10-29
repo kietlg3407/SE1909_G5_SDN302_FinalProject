@@ -1,9 +1,13 @@
 import axios from 'axios';
 
-const API_BASE_URL =
+const rawBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
   'http://localhost:5000';
+
+// Normalize base URL: strip trailing slash and optional trailing /api
+// because API calls across the frontend explicitly start with '/api/...'
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '');
 
 const TOKEN_KEY = 'token';
 

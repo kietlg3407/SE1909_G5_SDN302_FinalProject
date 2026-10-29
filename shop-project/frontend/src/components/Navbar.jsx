@@ -32,62 +32,76 @@ const Navbar = () => {
         <nav className="nav-links">
           <Link to="/" className="nav-link">Trang chủ</Link>
           <a href="#products" className="nav-link">Bộ sưu tập</a>
+          {isAdmin && (
+            <Link to="/admin/dashboard" className="nav-link admin-nav-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#4338ca', fontWeight: '700' }}>
+              <ShieldCheck size={18} />
+              <span>Trang Quản Trị</span>
+            </Link>
+          )}
         </nav>
 
         {/* User Actions */}
         <div className="nav-actions">
           {isAuthenticated ? (
-            <div className="user-dropdown-wrapper">
-              <button
-                className="user-profile-btn"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                aria-label="User menu"
-              >
-                {user?.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="user-avatar-img" />
-                ) : (
-                  <div className="user-avatar-fallback">
-                    <User size={18} strokeWidth={2} />
+            <>
+              {isAdmin && (
+                <Link to="/admin/dashboard" className="admin-header-btn" title="Đi đến Trang Quản Trị Admin">
+                  <ShieldCheck size={16} />
+                  <span>Admin Dashboard</span>
+                </Link>
+              )}
+              <div className="user-dropdown-wrapper">
+                <button
+                  className="user-profile-btn"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  aria-label="User menu"
+                >
+                  {user?.avatar ? (
+                    <img src={user.avatar} alt={user.name} className="user-avatar-img" />
+                  ) : (
+                    <div className="user-avatar-fallback">
+                      <User size={18} strokeWidth={2} />
+                    </div>
+                  )}
+                  <div className="user-info-text">
+                    <span className="user-display-name">{user?.name}</span>
+                    {isAdmin ? (
+                      <span className="admin-tag">Admin</span>
+                    ) : user?.role === 'staff' ? (
+                      <span className="staff-tag">Staff</span>
+                    ) : null}
+                  </div>
+                </button>
+
+                {dropdownOpen && (
+                  <div className="dropdown-menu animate-fade-in" onClick={() => setDropdownOpen(false)}>
+                    <div className="dropdown-header">
+                      <p className="dropdown-name">{user?.name}</p>
+                      <p className="dropdown-email">{user?.email}</p>
+                    </div>
+                    <div className="dropdown-divider"></div>
+
+                    {isAdmin && (
+                      <Link to="/admin/dashboard" className="dropdown-item admin-link" onClick={() => setDropdownOpen(false)}>
+                        <ShieldCheck size={16} />
+                        <span>Trang Quản Trị</span>
+                      </Link>
+                    )}
+
+                    <Link to="/profile" className="dropdown-item">
+                      <User size={16} />
+                      <span>Hồ sơ cá nhân</span>
+                    </Link>
+
+                    <div className="dropdown-divider"></div>
+                    <button onClick={handleLogout} className="dropdown-item logout-btn">
+                      <LogOut size={16} />
+                      <span>Đăng xuất</span>
+                    </button>
                   </div>
                 )}
-                <div className="user-info-text">
-                  <span className="user-display-name">{user?.name}</span>
-                  {isAdmin ? (
-                    <span className="admin-tag">Admin</span>
-                  ) : user?.role === 'staff' ? (
-                    <span className="staff-tag">Staff</span>
-                  ) : null}
-                </div>
-              </button>
-
-              {dropdownOpen && (
-                <div className="dropdown-menu animate-fade-in" onClick={() => setDropdownOpen(false)}>
-                  <div className="dropdown-header">
-                    <p className="dropdown-name">{user?.name}</p>
-                    <p className="dropdown-email">{user?.email}</p>
-                  </div>
-                  <div className="dropdown-divider"></div>
-
-                  <Link to="/profile" className="dropdown-item">
-                    <User size={16} />
-                    <span>Hồ sơ cá nhân</span>
-                  </Link>
-
-                  {isAdmin && (
-                    <Link to="/admin/dashboard" className="dropdown-item admin-link" onClick={() => setDropdownOpen(false)}>
-                      <ShieldCheck size={16} />
-                      <span>Trang Quản Trị</span>
-                    </Link>
-                  )}
-
-                  <div className="dropdown-divider"></div>
-                  <button onClick={handleLogout} className="dropdown-item logout-btn">
-                    <LogOut size={16} />
-                    <span>Đăng xuất</span>
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            </>
           ) : (
             <div className="auth-btn-group">
               <Link to="/login" className="btn-secondary">Đăng nhập</Link>
@@ -113,7 +127,9 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               {isAdmin && (
-                <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)}>Trang Quản Trị</Link>
+                <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)} style={{ color: '#4338ca', fontWeight: '700' }}>
+                  🛡️ Trang Quản Trị
+                </Link>
               )}
               <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>Hồ sơ & Địa chỉ</Link>
               <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="mobile-logout-btn">
