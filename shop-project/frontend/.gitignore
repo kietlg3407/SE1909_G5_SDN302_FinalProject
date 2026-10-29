@@ -24,6 +24,29 @@ dist-ssr
 secrets/
 credentials/
 
+# Testing & Coverage
+coverage/
+*.lcov
+.nyc_output/
+src/test/
+tests/
+test/
+__tests__/
+*.test.*
+*.spec.*
+vitest.config.*
+playwright.config.*
+cypress.config.*
+TEST_REPORT*.md
+TEST_SUMMARY*.md
+
+# Build & Cache
+.eslintcache
+.stylelintcache
+.turbo
+.vite
+vite.config.*.timestamp-*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

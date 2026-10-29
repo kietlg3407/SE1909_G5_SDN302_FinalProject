@@ -48,6 +48,23 @@ const RegisterPage = () => {
           </div>
           <h2 className="auth-title">Tạo Tài Khoản Mới</h2>
           <p className="auth-subtitle">Đăng ký để tận hưởng ưu đãi và trải nghiệm tốt nhất</p>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '999px',
+            padding: '7px 14px',
+            marginTop: '12px',
+            color: '#15803d',
+            fontSize: '12px',
+            fontWeight: 700,
+          }}>
+            <span>🎁</span>
+            <span>Đăng ký nhận ngay Voucher 10% (mã: <strong>WELCOME10</strong>)</span>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">

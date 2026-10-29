@@ -112,10 +112,10 @@ const Navbar = () => {
           <a href="#products" onClick={() => setMobileMenuOpen(false)}>Bộ sưu tập</a>
           {isAuthenticated ? (
             <>
-              <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>Hồ sơ & Địa chỉ</Link>
               {isAdmin && (
                 <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)}>Trang Quản Trị</Link>
               )}
+              <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>Hồ sơ & Địa chỉ</Link>
               <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="mobile-logout-btn">
                 Đăng xuất
               </button>

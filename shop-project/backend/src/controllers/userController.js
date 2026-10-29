@@ -55,6 +55,7 @@ const registerUser = async (req, res) => {
       role: 'customer',
       avatar: '',
       addresses: [],
+      usedCoupons: [],
     });
 
     if (user) {
@@ -66,6 +67,12 @@ const registerUser = async (req, res) => {
         avatar: user.avatar,
         addresses: user.addresses,
         token: generateToken(user._id),
+        voucher: {
+          code: 'WELCOME10',
+          discountType: 'percentage',
+          discountValue: 10,
+          description: 'Voucher 10% dành cho thành viên mới (sử dụng 1 lần duy nhất)',
+        },
       });
     } else {
       res.status(400).json({ message: 'Dữ liệu người dùng không hợp lệ' });

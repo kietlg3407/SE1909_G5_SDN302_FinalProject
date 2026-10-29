@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String, default: '' },
     role: { type: String, enum: ['customer', 'staff', 'admin'], default: 'customer' },
     addresses: [addressSchema],
+    usedCoupons: [{ type: String }],
   },
   { timestamps: true }
 );

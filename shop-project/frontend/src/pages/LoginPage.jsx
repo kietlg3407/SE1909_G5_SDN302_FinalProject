@@ -21,6 +21,7 @@ const LoginPage = () => {
     setLoading(false);
 
     if (res.success) {
+      // Đăng nhập thành công: Luôn luôn chuyển hướng về Trang chủ (HomePage.jsx)
       navigate('/', { replace: true });
     }
   };

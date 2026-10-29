@@ -188,155 +188,155 @@ Bảng này phân chia công việc của Member 6 thành các bước nhỏ, ch
 
 ### Task 2.2: Create Coupon API
 **Mức độ:** ⭐⭐ Trung bình
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Backend Steps
-- [ ] Review `couponController.js` - check `createCoupon()` function
-- [ ] Review `couponModel.js` - check schema validation
-- [ ] Test endpoint: `POST /api/coupons`
-- [ ] Test with valid coupon data
-- [ ] Test with duplicate code (should fail)
-- [ ] Test with invalid discount type (should fail)
-- [ ] Test with percentage > 100 (should fail)
-- [ ] Test with negative discount value (should fail)
-- [ ] Test with expiry date in past (should fail)
-- [ ] Verify response includes created coupon
+- [x] Review `couponController.js` - check `createCoupon()` function
+- [x] Review `couponModel.js` - check schema validation
+- [x] Test endpoint: `POST /api/coupons`
+- [x] Test with valid coupon data
+- [x] Test with duplicate code (should fail)
+- [x] Test with invalid discount type (should fail)
+- [x] Test with percentage > 100 (should fail)
+- [x] Test with negative discount value (should fail)
+- [x] Test with expiry date in past (should fail)
+- [x] Verify response includes created coupon
 
 #### Frontend Steps
-- [ ] Review coupon form in `CouponsPage.jsx`
-- [ ] Check form fields: code, discountType, discountValue, minOrderValue, expiryDate, usageLimit
-- [ ] Review `buildPayload()` function for validation
-- [ ] Check validation rules:
-  - [ ] Code: required, uppercase, alphanumeric with hyphens/underscores
-  - [ ] Discount type: percentage or fixed
-  - [ ] Discount value: non-negative
-  - [ ] Percentage: 0-100
-  - [ ] Fixed: positive integer
-  - [ ] Min order value: non-negative
-  - [ ] Expiry date: must be in future
-  - [ ] Usage limit: non-negative integer
-- [ ] Check `handleSubmit()` function
-- [ ] Verify API call: `api.post('/api/coupons', payload)`
-- [ ] Check loading state during submission
-- [ ] Check form error display
-- [ ] Check toast notification on success
-- [ ] Check form reset after success
-- [ ] Verify local state updates after creation
+- [x] Review coupon form in `CouponsPage.jsx`
+- [x] Check form fields: code, discountType, discountValue, minOrderValue, expiryDate, usageLimit
+- [x] Review `buildPayload()` function for validation
+- [x] Check validation rules:
+  - [x] Code: required, uppercase, alphanumeric with hyphens/underscores
+  - [x] Discount type: percentage or fixed
+  - [x] Discount value: non-negative
+  - [x] Percentage: 0-100
+  - [x] Fixed: positive integer
+  - [x] Min order value: non-negative
+  - [x] Expiry date: must be in future
+  - [x] Usage limit: non-negative integer
+- [x] Check `handleSubmit()` function
+- [x] Verify API call: `api.post('/api/coupons', payload)`
+- [x] Check loading state during submission
+- [x] Check form error display
+- [x] Check toast notification on success
+- [x] Check form reset after success
+- [x] Verify local state updates after creation
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Coupons page
-- [ ] Fill form with valid data
-- [ ] Submit and verify coupon is created
-- [ ] Test validation: empty code (should show error)
-- [ ] Test validation: invalid code format (should show error)
-- [ ] Test validation: percentage > 100 (should show error)
-- [ ] Test validation: negative discount (should show error)
-- [ ] Test validation: past expiry date (should show error)
-- [ ] Test duplicate code (should show error)
-- [ ] Verify coupon appears in list after creation
+- [x] Login as admin
+- [x] Navigate to Coupons page
+- [x] Fill form with valid data
+- [x] Submit and verify coupon is created
+- [x] Test validation: empty code (should show error)
+- [x] Test validation: invalid code format (should show error)
+- [x] Test validation: percentage > 100 (should show error)
+- [x] Test validation: negative discount (should show error)
+- [x] Test validation: past expiry date (should show error)
+- [x] Test duplicate code (should show error)
+- [x] Verify coupon appears in list after creation
 
 ---
 
 ### Task 2.3: Update Coupon API
 **Mức độ:** ⭐⭐ Trung bình
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Backend Steps
-- [ ] Review `couponController.js` - check `updateCoupon()` function
-- [ ] Check `couponFields` array for allowed updates
-- [ ] Test endpoint: `PUT /api/coupons/:id`
-- [ ] Test with valid updates
-- [ ] Test with partial updates (only some fields)
-- [ ] Test with non-existent coupon ID (should return 404)
-- [ ] Test updating code to duplicate (should fail)
-- [ ] Verify response includes updated coupon
+- [x] Review `couponController.js` - check `updateCoupon()` function
+- [x] Check `couponFields` array for allowed updates
+- [x] Test endpoint: `PUT /api/coupons/:id`
+- [x] Test with valid updates
+- [x] Test with partial updates (only some fields)
+- [x] Test with non-existent coupon ID (should return 404)
+- [x] Test updating code to duplicate (should fail)
+- [x] Verify response includes updated coupon
 
 #### Frontend Steps
-- [ ] Review edit functionality in `CouponsPage.jsx`
-- [ ] Check `handleEdit()` function
-- [ ] Verify form populates with existing coupon data
-- [ ] Check date conversion for expiry date input
-- [ ] Verify edit mode indicator in UI
-- [ ] Check cancel edit button (X button)
-- [ ] Check `handleSubmit()` handles both create and update
-- [ ] Verify API call: `api.put('/api/coupons/${editingId}', payload)`
-- [ ] Check toast notification on success
-- [ ] Check form reset after update
-- [ ] Verify local state updates after update
-- [ ] Check scroll to top on edit
+- [x] Review edit functionality in `CouponsPage.jsx`
+- [x] Check `handleEdit()` function
+- [x] Verify form populates with existing coupon data
+- [x] Check date conversion for expiry date input
+- [x] Verify edit mode indicator in UI
+- [x] Check cancel edit button (X button)
+- [x] Check `handleSubmit()` handles both create and update
+- [x] Verify API call: `api.put('/api/coupons/${editingId}', payload)`
+- [x] Check toast notification on success
+- [x] Check form reset after update
+- [x] Verify local state updates after update
+- [x] Check scroll to top on edit
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Coupons page
-- [ ] Click edit button on a coupon
-- [ ] Verify form populates with coupon data
-- [ ] Modify coupon data
-- [ ] Submit and verify coupon is updated
-- [ ] Test cancel edit (form should reset)
-- [ ] Test partial update (only change one field)
-- [ ] Refresh page and verify changes persist
-- [ ] Test updating to duplicate code (should fail)
+- [x] Login as admin
+- [x] Navigate to Coupons page
+- [x] Click edit button on a coupon
+- [x] Verify form populates with coupon data
+- [x] Modify coupon data
+- [x] Submit and verify coupon is updated
+- [x] Test cancel edit (form should reset)
+- [x] Test partial update (only change one field)
+- [x] Refresh page and verify changes persist
+- [x] Test updating to duplicate code (should fail)
 
 ---
 
 ### Task 2.4: Delete Coupon API
 **Mức độ:** ⭐ Dễ
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Backend Steps
-- [ ] Review `couponController.js` - check `deleteCoupon()` function
-- [ ] Test endpoint: `DELETE /api/coupons/:id`
-- [ ] Test with valid coupon ID
-- [ ] Test with non-existent coupon ID (should return 404)
-- [ ] Verify response includes deleted coupon
-- [ ] Verify coupon is removed from database
+- [x] Review `couponController.js` - check `deleteCoupon()` function
+- [x] Test endpoint: `DELETE /api/coupons/:id`
+- [x] Test with valid coupon ID
+- [x] Test with non-existent coupon ID (should return 404)
+- [x] Verify response includes deleted coupon
+- [x] Verify coupon is removed from database
 
 #### Frontend Steps
-- [ ] Review delete button in `CouponsPage.jsx`
-- [ ] Check confirmation modal implementation
-- [ ] Verify modal shows coupon code
-- [ ] Check `handleDelete()` and `confirmDelete()` functions
-- [ ] Verify API call: `api.delete('/api/coupons/${couponId}')`
-- [ ] Check loading state during deletion
-- [ ] Check toast notification on success
-- [ ] Check toast notification on error
-- [ ] Verify local state updates after deletion
-- [ ] Check if editing same coupon, form resets
-- [ ] Check keyboard support (Escape to close modal)
+- [x] Review delete button in `CouponsPage.jsx`
+- [x] Check confirmation modal implementation
+- [x] Verify modal shows coupon code
+- [x] Check `handleDelete()` and `confirmDelete()` functions
+- [x] Verify API call: `api.delete('/api/coupons/${couponId}')`
+- [x] Check loading state during deletion
+- [x] Check toast notification on success
+- [x] Check toast notification on error
+- [x] Verify local state updates after deletion
+- [x] Check if editing same coupon, form resets
+- [x] Check keyboard support (Escape to close modal)
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Coupons page
-- [ ] Click delete button on a coupon
-- [ ] Verify confirmation modal appears
-- [ ] Cancel deletion and verify coupon still exists
-- [ ] Confirm deletion and verify coupon is removed
-- [ ] Refresh page and verify coupon is gone
-- [ ] Test modal closes on Escape key
-- [ ] Test deleting coupon currently being edited
+- [x] Login as admin
+- [x] Navigate to Coupons page
+- [x] Click delete button on a coupon
+- [x] Verify confirmation modal appears
+- [x] Cancel deletion and verify coupon still exists
+- [x] Confirm deletion and verify coupon is removed
+- [x] Refresh page and verify coupon is gone
+- [x] Test modal closes on Escape key
+- [x] Test deleting coupon currently being edited
 
 ---
 
 ### Task 2.5: Copy Coupon Code to Clipboard
 **Mức độ:** ⭐ Dễ
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Frontend Steps
-- [ ] Review `copyCode()` function in `CouponsPage.jsx`
-- [ ] Check button placement and icon
-- [ ] Test copy functionality with valid code
-- [ ] Test toast notification on success
-- [ ] Test toast notification on error
-- [ ] Verify clipboard API usage
+- [x] Review `copyCode()` function in `CouponsPage.jsx`
+- [x] Check button placement and icon
+- [x] Test copy functionality with valid code
+- [x] Test toast notification on success
+- [x] Test toast notification on error
+- [x] Verify clipboard API usage
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Coupons page
-- [ ] Click copy button on a coupon
-- [ ] Verify toast shows "Đã sao chép mã"
-- [ ] Paste to verify code was copied
-- [ ] Test in different browsers
+- [x] Login as admin
+- [x] Navigate to Coupons page
+- [x] Click copy button on a coupon
+- [x] Verify toast shows "Đã sao chép mã"
+- [x] Paste to verify code was copied
+- [x] Test in different browsers
 
 ---
 
