@@ -86,6 +86,7 @@ cypress.config.*
 # Test Reports & Summaries
 TEST_REPORT*.md
 TEST_SUMMARY*.md
+FRONTEND_ENHANCEMENTS*.md
 
 # Agent Task & Coordination Summaries
 TASK_*_COORDINATION_SUMMARY.md
