@@ -44,76 +44,76 @@ Bảng này phân chia công việc của Member 6 thành các bước nhỏ, ch
 
 ### Task 1.2: Update User Role API
 **Mức độ:** ⭐ Trung bình
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Backend Steps
-- [ ] Review `adminController.js` - check `updateUserRole()` function
-- [ ] Verify role validation against `validRoles` array
-- [ ] Check error handling for invalid roles
-- [ ] Test endpoint: `PUT /api/admin/users/:id/role`
-- [ ] Test with valid role (customer, staff, admin)
-- [ ] Test with invalid role (should return 400)
-- [ ] Test with non-existent user ID (should return 404)
-- [ ] Verify response includes updated user object
+- [x] Review `adminController.js` - check `updateUserRole()` function
+- [x] Verify role validation against `validRoles` array
+- [x] Check error handling for invalid roles
+- [x] Test endpoint: `PUT /api/admin/users/:id/role`
+- [x] Test with valid role (customer, staff, admin)
+- [x] Test with invalid role (should return 400)
+- [x] Test with non-existent user ID (should return 404)
+- [x] Verify response includes updated user object
 
 #### Frontend Steps
-- [ ] Review role dropdown in `AdminUsersPage.jsx`
-- [ ] Verify options: customer, staff, admin
-- [ ] Check `handleRoleChange()` function
-- [ ] Verify API call: `api.put('/api/admin/users/${userId}/role', { role })`
-- [ ] Check loading state during update
-- [ ] Verify user cannot change own role (disabled)
-- [ ] Check toast notification on success
-- [ ] Check toast notification on error
-- [ ] Verify local state updates after success
+- [x] Review role dropdown in `AdminUsersPage.jsx`
+- [x] Verify options: customer, staff, admin
+- [x] Check `handleRoleChange()` function
+- [x] Verify API call: `api.put('/api/admin/users/${userId}/role', { role })`
+- [x] Check loading state during update
+- [x] Verify user cannot change own role (disabled)
+- [x] Check toast notification on success
+- [x] Check toast notification on error
+- [x] Verify local state updates after success
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Admin Users page
-- [ ] Try to change another user's role
-- [ ] Verify role updates in UI
-- [ ] Refresh page and verify change persists
-- [ ] Try to change own role (should be disabled)
-- [ ] Try to set invalid role (should show error)
+- [x] Login as admin
+- [x] Navigate to Admin Users page
+- [x] Try to change another user's role
+- [x] Verify role updates in UI
+- [x] Refresh page and verify change persists
+- [x] Try to change own role (should be disabled)
+- [x] Try to set invalid role (should show error)
 
 ---
 
 ### Task 1.3: Delete User API
 **Mức độ:** ⭐ Trung bình
-**Trạng thái:** ☐ Pending / ☐ In Progress / ☑ Completed
+**Trạng thái:** ☑ Completed
 
 #### Backend Steps
-- [ ] Review `adminController.js` - check `deleteUser()` function
-- [ ] Verify error handling for non-existent user
-- [ ] Test endpoint: `DELETE /api/admin/users/:id`
-- [ ] Test with valid user ID
-- [ ] Test with non-existent user ID (should return 404)
-- [ ] Verify response includes deleted user object
-- [ ] Verify user is actually removed from database
+- [x] Review `adminController.js` - check `deleteUser()` function
+- [x] Verify error handling for non-existent user
+- [x] Test endpoint: `DELETE /api/admin/users/:id`
+- [x] Test with valid user ID
+- [x] Test with non-existent user ID (should return 404)
+- [x] Verify response includes deleted user object
+- [x] Verify user is actually removed from database
 
 #### Frontend Steps
-- [ ] Review delete button in `AdminUsersPage.jsx`
-- [ ] Check confirmation modal implementation
-- [ ] Verify modal shows user name/email
-- [ ] Check `confirmDelete()` function
-- [ ] Verify API call: `api.delete('/api/admin/users/${userId}')`
-- [ ] Check loading state during deletion
-- [ ] Verify user cannot delete own account (disabled)
-- [ ] Check toast notification on success
-- [ ] Check toast notification on error
-- [ ] Verify local state updates after deletion
-- [ ] Check keyboard support (Escape to close modal)
+- [x] Review delete button in `AdminUsersPage.jsx`
+- [x] Check confirmation modal implementation
+- [x] Verify modal shows user name/email
+- [x] Check `confirmDelete()` function
+- [x] Verify API call: `api.delete('/api/admin/users/${userId}')`
+- [x] Check loading state during deletion
+- [x] Verify user cannot delete own account (disabled)
+- [x] Check toast notification on success
+- [x] Check toast notification on error
+- [x] Verify local state updates after deletion
+- [x] Check keyboard support (Escape to close modal)
 
 #### Testing Steps
-- [ ] Login as admin
-- [ ] Navigate to Admin Users page
-- [ ] Click delete button on a user
-- [ ] Verify confirmation modal appears
-- [ ] Cancel deletion and verify user still exists
-- [ ] Confirm deletion and verify user is removed
-- [ ] Refresh page and verify user is gone
-- [ ] Try to delete own account (should be disabled)
-- [ ] Test modal closes on Escape key
+- [x] Login as admin
+- [x] Navigate to Admin Users page
+- [x] Click delete button on a user
+- [x] Verify confirmation modal appears
+- [x] Cancel deletion and verify user still exists
+- [x] Confirm deletion and verify user is removed
+- [x] Refresh page and verify user is gone
+- [x] Try to delete own account (should be disabled)
+- [x] Test modal closes on Escape key
 
 ---
 

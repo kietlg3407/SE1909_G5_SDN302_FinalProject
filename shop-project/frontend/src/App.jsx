@@ -96,12 +96,12 @@ function App() {
             />
           </Route>
 
-          <Route element={<AdminRoute />}>
+          <Route path="/admin" element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="/admin/dashboard" element={<DashboardPage />} />
-              <Route path="/admin/users" element={<AdminUsersPage />} />
-              <Route path="/admin/coupons" element={<CouponsPage />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="coupons" element={<CouponsPage />} />
             </Route>
           </Route>
 

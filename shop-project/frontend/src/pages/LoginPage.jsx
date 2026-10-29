@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
 
@@ -11,9 +11,6 @@ const LoginPage = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = location.state?.from?.pathname || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +21,7 @@ const LoginPage = () => {
     setLoading(false);
 
     if (res.success) {
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     }
   };
 

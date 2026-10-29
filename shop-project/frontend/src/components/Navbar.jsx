@@ -74,10 +74,10 @@ const Navbar = () => {
                   </Link>
 
                   {isAdmin && (
-                    <div className="dropdown-item admin-link">
+                    <Link to="/admin/dashboard" className="dropdown-item admin-link" onClick={() => setDropdownOpen(false)}>
                       <ShieldCheck size={16} />
                       <span>Trang Quản Trị</span>
-                    </div>
+                    </Link>
                   )}
 
                   <div className="dropdown-divider"></div>
@@ -113,6 +113,9 @@ const Navbar = () => {
           {isAuthenticated ? (
             <>
               <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>Hồ sơ & Địa chỉ</Link>
+              {isAdmin && (
+                <Link to="/admin/dashboard" onClick={() => setMobileMenuOpen(false)}>Trang Quản Trị</Link>
+              )}
               <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="mobile-logout-btn">
                 Đăng xuất
               </button>

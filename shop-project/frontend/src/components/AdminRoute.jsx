@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ShieldX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,6 +19,12 @@ const LoadingState = () => (
 
 const UnauthorizedState = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogoutAndLogin = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="not-found-page" role="alert">
@@ -30,6 +36,9 @@ const UnauthorizedState = () => {
         <button type="button" className="btn-primary" onClick={() => navigate('/')}>
           Quay Về Trang Chủ
         </button>
+        <button type="button" className="btn-secondary" onClick={handleLogoutAndLogin}>
+          Đăng Xuất và Đăng Nhập Lại
+        </button>
       </div>
     </div>
   );
@@ -37,20 +46,13 @@ const UnauthorizedState = () => {
 
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return <LoadingState />;
   }
 
   if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
-      />
-    );
+    return <Navigate to="/login" replace />;
   }
 
   if (user.role !== 'admin') {

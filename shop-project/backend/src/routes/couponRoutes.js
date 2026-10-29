@@ -5,13 +5,15 @@ const {
   updateCoupon,
   deleteCoupon,
 } = require('../controllers/couponController');
+const { protect, isAdmin } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-router
-  .route('/')
-  .get(getAllCoupons)
-  .post(createCoupon);
+router.get('/', getAllCoupons);
+
+router.use(protect, isAdmin);
+
+router.post('/', createCoupon);
 
 router
   .route('/:id')
