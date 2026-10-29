@@ -1,3 +1,16 @@
 node_modules/
 .env
+.env.local
+.env.*.local
 *.log
+
+# Security - Keys & Secrets
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Build outputs
+dist/
+build/

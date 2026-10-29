@@ -3,11 +3,20 @@ node_modules/
 */node_modules/
 */*/node_modules/
 
-# Environment files
+# Environment files - SECURITY CRITICAL
 .env
 .env.local
 .env.*.local
 *.env
+
+# Security - Keys & Secrets - NEVER COMMIT
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+*.p12
+*.pkcs12
 
 # Build outputs
 dist/
@@ -15,7 +24,7 @@ dist-ssr/
 build/
 *.local
 
-# Logs
+# Logs - may contain sensitive info
 logs/
 *.log
 npm-debug.log*
