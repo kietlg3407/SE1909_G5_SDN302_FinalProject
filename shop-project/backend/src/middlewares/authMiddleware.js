@@ -28,7 +28,7 @@ const isAdmin = (req, res, next) => {
     return next();
   }
 
-  return res.status(403).json({ message: 'Forbidden: administrator privileges required' });
+  return res.status(403).json({ message: 'Bạn không có quyền truy cập. Chỉ quản trị viên mới được phép.' });
 };
 
 module.exports = { protect, isAdmin, admin: isAdmin };

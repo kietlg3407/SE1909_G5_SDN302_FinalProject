@@ -19,6 +19,12 @@ const LoadingState = () => (
 
 const UnauthorizedState = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const handleLogoutAndLogin = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="not-found-page" role="alert">
@@ -29,6 +35,9 @@ const UnauthorizedState = () => {
         <p>Bạn cần có quyền quản trị viên để xem trang này.</p>
         <button type="button" className="btn-primary" onClick={() => navigate('/')}>
           Quay Về Trang Chủ
+        </button>
+        <button type="button" className="btn-secondary" onClick={handleLogoutAndLogin}>
+          Đăng Xuất và Đăng Nhập Lại
         </button>
       </div>
     </div>

@@ -74,7 +74,7 @@ const Navbar = () => {
                   </Link>
 
                   {isAdmin && (
-                    <Link to="/admin/dashboard" className="dropdown-item admin-link">
+                    <Link to="/admin/dashboard" className="dropdown-item admin-link" onClick={() => setDropdownOpen(false)}>
                       <ShieldCheck size={16} />
                       <span>Trang Quản Trị</span>
                     </Link>
