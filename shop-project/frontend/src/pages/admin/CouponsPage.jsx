@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
   ChevronDown,
@@ -67,6 +68,9 @@ const CouponsPage = () => {
   const [editingId, setEditingId] = useState(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [formError, setFormError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [minimumExpiryDate] = useState(() => toDateInputValue(new Date()));
 
   const fetchCoupons = useCallback(async () => {
     try {
@@ -84,6 +88,17 @@ const CouponsPage = () => {
   useEffect(() => {
     fetchCoupons();
   }, [fetchCoupons]);
+
+  useEffect(() => {
+    if (!deleteTarget) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !deletingId) setDeleteTarget(null);
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [deleteTarget, deletingId]);
 
   const counts = useMemo(() => {
     const expired = coupons.filter(isExpired).length;
@@ -118,11 +133,13 @@ const CouponsPage = () => {
   const resetForm = () => {
     setForm(EMPTY_FORM);
     setEditingId(null);
+    setFormError('');
   };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((currentForm) => ({ ...currentForm, [name]: value }));
+    setFormError('');
   };
 
   const handleEdit = (coupon) => {
@@ -135,21 +152,33 @@ const CouponsPage = () => {
       expiryDate: toDateInputValue(coupon.expiryDate),
       usageLimit: coupon.usageLimit ?? '',
     });
+    setFormError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const buildPayload = () => {
+    const normalizedCode = form.code.trim().toUpperCase();
     const discountValue = Number(form.discountValue);
-    if (!form.code.trim()) throw new Error('Mã giảm giá không được để trống');
-    if (!form.discountValue || Number.isNaN(discountValue) || discountValue < 0) {
+    if (!normalizedCode) throw new Error('Mã giảm giá không được để trống');
+    if (!/^[A-Z0-9_-]+$/.test(normalizedCode)) {
+      throw new Error('Mã giảm giá chỉ được chứa chữ cái, số, dấu gạch ngang hoặc gạch dưới');
+    }
+    if (
+      form.discountValue === '' ||
+      !Number.isFinite(discountValue) ||
+      discountValue < 0
+    ) {
       throw new Error('Giá trị giảm giá phải là số không âm');
     }
     if (form.discountType === 'percentage' && discountValue > 100) {
       throw new Error('Phần trăm giảm giá không được vượt quá 100');
     }
+    if (form.discountType === 'fixed' && !Number.isInteger(discountValue)) {
+      throw new Error('Giảm giá cố định phải là số nguyên');
+    }
 
     const payload = {
-      code: form.code.trim().toUpperCase(),
+      code: normalizedCode,
       discountType: form.discountType,
       discountValue,
     };
@@ -160,7 +189,16 @@ const CouponsPage = () => {
       }
       payload.minOrderValue = minOrderValue;
     }
-    if (form.expiryDate) payload.expiryDate = new Date(form.expiryDate).toISOString();
+    if (form.expiryDate) {
+      const expiryDate = new Date(form.expiryDate);
+      if (Number.isNaN(expiryDate.getTime())) {
+        throw new Error('Ngày hết hạn không hợp lệ');
+      }
+      if (expiryDate.getTime() <= Date.now()) {
+        throw new Error('Ngày hết hạn phải nằm trong tương lai');
+      }
+      payload.expiryDate = expiryDate.toISOString();
+    }
     if (form.usageLimit !== '') {
       const usageLimit = Number(form.usageLimit);
       if (!Number.isInteger(usageLimit) || usageLimit < 0) {
@@ -177,6 +215,7 @@ const CouponsPage = () => {
     try {
       payload = buildPayload();
     } catch (error) {
+      setFormError(error.message);
       toast.error(error.message);
       return;
     }
@@ -184,14 +223,24 @@ const CouponsPage = () => {
     try {
       setSubmitting(true);
       if (editingId) {
-        await api.put(`/api/coupons/${editingId}`, payload);
+        const response = await api.put(`/api/coupons/${editingId}`, payload);
+        const updatedCoupon = response.data?.coupon;
+        if (updatedCoupon) {
+          setCoupons((currentCoupons) =>
+            currentCoupons.map((coupon) =>
+              getCouponId(coupon) === editingId ? updatedCoupon : coupon
+            )
+          );
+        }
         toast.success('Cập nhật mã giảm giá thành công');
       } else {
-        await api.post('/api/coupons', payload);
+        const response = await api.post('/api/coupons', payload);
+        if (response.data?.coupon) {
+          setCoupons((currentCoupons) => [...currentCoupons, response.data.coupon]);
+        }
         toast.success('Tạo mã giảm giá thành công');
       }
       resetForm();
-      await fetchCoupons();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể lưu mã giảm giá'));
     } finally {
@@ -201,7 +250,14 @@ const CouponsPage = () => {
 
   const handleDelete = async (coupon) => {
     const couponId = getCouponId(coupon);
-    if (!couponId || !window.confirm(`Xóa mã giảm giá ${coupon.code}?`)) return;
+    if (!couponId) return;
+    setDeleteTarget(coupon);
+  };
+
+  const confirmDelete = async () => {
+    const couponId = getCouponId(deleteTarget);
+    if (!couponId) return;
+
     try {
       setDeletingId(couponId);
       await api.delete(`/api/coupons/${couponId}`);
@@ -209,6 +265,7 @@ const CouponsPage = () => {
         currentCoupons.filter((currentCoupon) => getCouponId(currentCoupon) !== couponId)
       );
       if (editingId === couponId) resetForm();
+      setDeleteTarget(null);
       toast.success('Đã xóa mã giảm giá');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Không thể xóa mã giảm giá'));
@@ -245,6 +302,8 @@ const CouponsPage = () => {
         .coupon-form label { display: grid; gap: 7px; color: #334155; font-size: 12px; font-weight: 700; }
         .coupon-form input, .coupon-form select, .coupon-search input, .coupon-filter select { width: 100%; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; padding: 10px 12px; transition: border-color .2s, box-shadow .2s; }
         .coupon-form input:focus, .coupon-form select:focus, .coupon-search input:focus, .coupon-filter select:focus { outline: none; border-color: #475569; box-shadow: 0 0 0 3px rgb(71 85 105 / 12%); }
+        .coupon-form input:invalid, .coupon-form select:invalid { border-color: #fca5a5; }
+        .coupon-form-error { display: flex; gap: 7px; align-items: flex-start; padding: 10px 12px; border: 1px solid #fecaca; border-radius: 9px; background: #fef2f2; color: #b91c1c; font-size: 12px; line-height: 1.45; }
         .coupon-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .coupon-input-with-icon { position: relative; }
         .coupon-input-with-icon svg { position: absolute; left: 11px; top: 11px; color: #94a3b8; }
@@ -292,6 +351,14 @@ const CouponsPage = () => {
         .coupon-empty, .coupon-loading, .coupon-error { display: grid; place-items: center; gap: 8px; min-height: 240px; padding: 30px; color: #64748b; text-align: center; font-size: 13px; }
         .coupon-error { color: #b91c1c; }
         .coupon-empty svg, .coupon-error svg { color: #94a3b8; }
+        .coupon-modal-copy { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 24px; color: #475569; font-size: 14px; }
+        .coupon-modal-copy svg { color: #dc2626; }
+        .coupon-modal-copy strong { color: #0f172a; }
+        .coupon-modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 0 24px 24px; }
+        .coupon-modal-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; padding: 10px 14px; font: inherit; font-size: 13px; font-weight: 700; }
+        .coupon-modal-cancel { border: 1px solid #cbd5e1; color: #334155; }
+        .coupon-modal-confirm { background: #dc2626; color: #fff; }
+        .coupon-modal-button:disabled { cursor: not-allowed; opacity: .6; }
         @media (max-width: 900px) { .coupons-layout { grid-template-columns: 1fr; } .coupon-form-card { position: static; } }
         @media (max-width: 650px) { .coupons-page { padding-top: 24px; } .coupons-header { align-items: flex-start; flex-direction: column; } .coupon-list-toolbar { align-items: stretch; flex-direction: column; } .coupon-toolbar-tools { flex-direction: column; } .coupon-search, .coupon-filter { min-width: 0; } .coupon-field-row { grid-template-columns: 1fr; } }
       `}</style>
@@ -346,9 +413,10 @@ const CouponsPage = () => {
               <label>Ngày hết hạn
                 <div className="coupon-input-with-icon">
                   <CalendarDays size={16} />
-                  <input name="expiryDate" type="datetime-local" value={form.expiryDate} onChange={handleChange} />
+                  <input name="expiryDate" type="datetime-local" min={minimumExpiryDate} value={form.expiryDate} onChange={handleChange} />
                 </div>
               </label>
+              {formError && <div className="coupon-form-error" role="alert"><AlertTriangle size={15} />{formError}</div>}
               <div className="coupon-actions">
                 {editingId && <button type="button" className="coupon-button coupon-button-secondary" onClick={resetForm}>Hủy</button>}
                 <button type="submit" className="coupon-button coupon-button-primary" disabled={submitting}>
@@ -380,6 +448,7 @@ const CouponsPage = () => {
                   </select>
                 </label>
               </div>
+
             </div>
 
             {loading ? (
@@ -413,6 +482,56 @@ const CouponsPage = () => {
           </section>
         </div>
       </div>
+
+      {deleteTarget && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !deletingId) setDeleteTarget(null);
+          }}
+        >
+          <div className="modal-card animate-scale-up" role="alertdialog" aria-modal="true" aria-labelledby="delete-coupon-title">
+            <div className="modal-header">
+              <h3 id="delete-coupon-title">Xóa mã giảm giá?</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                aria-label="Đóng xác nhận"
+                onClick={() => setDeleteTarget(null)}
+                disabled={Boolean(deletingId)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="coupon-modal-copy">
+              <AlertTriangle size={22} aria-hidden="true" />
+              <p>
+                Bạn sắp xóa mã <strong>{deleteTarget.code}</strong>. Thao tác này không thể hoàn tác.
+              </p>
+            </div>
+            <div className="coupon-modal-actions">
+              <button
+                type="button"
+                className="coupon-modal-button coupon-modal-cancel"
+                onClick={() => setDeleteTarget(null)}
+                disabled={Boolean(deletingId)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="coupon-modal-button coupon-modal-confirm"
+                onClick={confirmDelete}
+                disabled={Boolean(deletingId)}
+              >
+                {deletingId ? <RefreshCw size={15} className="coupon-spin" /> : <Trash2 size={15} />}
+                Xóa mã
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
