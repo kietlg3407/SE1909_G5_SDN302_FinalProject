@@ -3,11 +3,19 @@ node_modules/
 */node_modules/
 */*/node_modules/
 
-# Environment files - SECURITY CRITICAL
+# Environment files & Accounts / Credentials - SECURITY CRITICAL
 .env
 .env.local
 .env.*.local
 *.env
+account*.json
+accounts*.json
+account*.txt
+accounts*.txt
+*account*
+*credential*
+*auth_data*
+*user_data*
 
 # Security - Keys & Secrets - NEVER COMMIT
 *.pem
@@ -57,7 +65,7 @@ Desktop.ini
 *.tmp
 *.temp
 
-# Testing & Coverage
+# Testing, Coverage & Test Scripts
 coverage/
 */coverage/
 *.lcov
@@ -68,14 +76,13 @@ cypress/videos/
 cypress/screenshots/
 allure-results/
 allure-report/
-
-# Test Files & Directories
 tests/
 test/
 __tests__/
 __mocks__/
 *.test.*
 *.spec.*
+*test*
 
 # Test Configuration Files
 jest.config.*
@@ -83,14 +90,24 @@ vitest.config.*
 playwright.config.*
 cypress.config.*
 
-# Test Reports & Summaries
-TEST_REPORT*.md
-TEST_SUMMARY*.md
-FRONTEND_ENHANCEMENTS*.md
+# Test Reports, Summaries & Task Documentation
+TEST_REPORT*
+TEST_SUMMARY*
+*TEST_REPORT*
+*TEST_SUMMARY*
+FRONTEND_ENHANCEMENTS*
+TASK_*_COORDINATION_SUMMARY*
+*COORDINATION_SUMMARY*
+*WORK_ASSIGNMENT*
 
-# Agent Task & Coordination Summaries
-TASK_*_COORDINATION_SUMMARY.md
-*COORDINATION_SUMMARY*.md
+# API Documentation & Test Scripts
+COUPONS_API_DOCUMENTATION.md
+*COUPONS_API_DOCUMENTATION*
+*API_DOCUMENTATION*
+*api_doc*
+*api_docs*
+*test-*-coupon*
+scripts/test-*
 
 # Caches & Temporary build files
 .cache/
@@ -101,3 +118,4 @@ TASK_*_COORDINATION_SUMMARY.md
 .vite/
 vite.config.*.timestamp-*
 *.tsbuildinfo
+

@@ -1,6 +1,6 @@
+import React, { useState } from 'react';
 import { BarChart3, Menu, Tag, Users, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { useState } from 'react';
 
 const navigationItems = [
   {

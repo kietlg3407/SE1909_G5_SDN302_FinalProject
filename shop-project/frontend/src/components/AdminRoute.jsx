@@ -1,3 +1,4 @@
+import React from 'react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { ShieldX } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';

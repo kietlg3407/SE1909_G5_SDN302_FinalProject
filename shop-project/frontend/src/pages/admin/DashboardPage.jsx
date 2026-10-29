@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   BarElement,
@@ -139,7 +139,8 @@ const DashboardPage = () => {
             Number(stats.totalUsers || 0),
             Number(stats.totalProducts || 0),
           ],
-          backgroundColor: ['#0f172a', '#2563eb', '#7c3aed', '#0f766e'],
+          backgroundColor: ['#4338ca', '#1d4ed8', '#7c3aed', '#0f766e'],
+          hoverBackgroundColor: ['#3730a3', '#1e40af', '#6d28d9', '#0d9488'],
           borderRadius: 8,
           maxBarThickness: 48,
         },
@@ -176,7 +177,12 @@ const DashboardPage = () => {
         backgroundColor: '#0f172a',
         padding: 10,
         callbacks: {
-          label: (context) => ` ${formatNumber(context.raw)}`,
+          label: (context) => {
+          if (context.dataIndex === 0) {
+            return ` Doanh thu: ${formatCurrency(context.raw)}`;
+          }
+          return ` ${context.dataset.label || 'Giá trị'}: ${formatNumber(context.raw)}`;
+        },
         },
       },
     },
@@ -205,7 +211,8 @@ const DashboardPage = () => {
         .dashboard-spin { animation: dashboard-spin 1s linear infinite; }
         @keyframes dashboard-spin { to { transform: rotate(360deg); } }
         .dashboard-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .dashboard-kpi { border: 1px solid #e2e8f0; border-radius: 15px; background: #fff; padding: 20px; box-shadow: 0 4px 16px rgb(15 23 42 / 4%); }
+        .dashboard-kpi { border: 1px solid #e2e8f0; border-radius: 15px; background: #fff; padding: 20px; box-shadow: 0 4px 16px rgb(15 23 42 / 4%); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .dashboard-kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgb(15 23 42 / 8%); border-color: #cbd5e1; }
         .dashboard-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .dashboard-kpi-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 10px; }
         .dashboard-kpi-revenue .dashboard-kpi-icon { background: #e0e7ff; color: #4338ca; }
@@ -237,7 +244,7 @@ const DashboardPage = () => {
             <h1>Dashboard điều hành</h1>
             <p>Theo dõi sức khỏe hoạt động của cửa hàng từ một nơi.</p>
           </div>
-          <button type="button" className="dashboard-refresh" onClick={fetchStats} disabled={loading}>
+          <button type="button" className="dashboard-refresh" onClick={fetchStats} disabled={loading} data-testid="dashboard-refresh-btn" aria-label="Làm mới dữ liệu" aria-busy={loading}>
             <RefreshCw size={15} className={loading ? 'dashboard-spin' : ''} /> Làm mới dữ liệu
           </button>
         </header>
@@ -257,13 +264,13 @@ const DashboardPage = () => {
             </section>
 
             <section className="dashboard-chart-grid">
-              <article className="dashboard-card">
+              <article className="dashboard-card" data-testid="overview-chart-card">
                 <div className="dashboard-card-header"><div><h2>Hiệu suất tổng quan</h2><p>Các chỉ số đang được cập nhật từ hệ thống</p></div><BarChart3 size={19} className="dashboard-card-icon" /></div>
-                <div className="dashboard-chart"><Bar data={overviewData} options={chartOptions} /></div>
+                <div className="dashboard-chart" data-testid="bar-chart-container"><Bar data={overviewData} options={chartOptions} /></div>
               </article>
-              <article className="dashboard-card">
+              <article className="dashboard-card" data-testid="trend-chart-card">
                 <div className="dashboard-card-header"><div><h2>Xu hướng doanh thu</h2><p>Biến động theo dữ liệu backend</p></div><CircleDollarSign size={19} className="dashboard-card-icon" /></div>
-                <div className="dashboard-chart">
+                <div className="dashboard-chart" data-testid="line-chart-container">
                   {lineData ? <Line data={lineData} options={{ ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, ticks: { ...chartOptions.scales.y.ticks, callback: (value) => formatCurrency(value) } } } }} /> : <div className="dashboard-trend-empty"><div><ArrowDownRight size={24} /><strong>Chưa có dữ liệu chuỗi thời gian</strong><span>API hiện cung cấp số liệu tổng hợp. Biểu đồ sẽ tự hiển thị khi backend trả về revenueTrend.</span></div></div>}
                 </div>
               </article>
