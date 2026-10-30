@@ -116,8 +116,75 @@ const deleteUser = async (req, res) => {
   }
 };
 
+const toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
+
+    // Prevent self-deactivation
+    if (id === req.user._id.toString()) {
+      return res.status(403).json({
+        message: 'You cannot deactivate your own account',
+      });
+    }
+
+    // Fetch user first to check role and status
+    const userToUpdate = await User.findById(id);
+    if (!userToUpdate) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Determine target active status
+    let targetActive;
+    if (typeof req.body.isActive === 'boolean') {
+      targetActive = req.body.isActive;
+    } else if (req.body.isActive === 'true' || req.body.isActive === 'false') {
+      targetActive = req.body.isActive === 'true';
+    } else {
+      // Toggle current status (default is active if not set)
+      targetActive = userToUpdate.isActive === false ? true : false;
+    }
+
+    // Prevent deactivating the last active admin
+    if (userToUpdate.role === 'admin' && targetActive === false) {
+      const activeAdminCount = await User.countDocuments({
+        role: 'admin',
+        isActive: { $ne: false },
+      });
+      if (activeAdminCount <= 1) {
+        return res.status(403).json({
+          message: 'Cannot deactivate the last active admin account',
+        });
+      }
+    }
+
+    userToUpdate.isActive = targetActive;
+    await userToUpdate.save();
+
+    const user = userToUpdate.toObject();
+    delete user.password;
+
+    return res.status(200).json({
+      message: targetActive
+        ? 'User activated successfully'
+        : 'User deactivated successfully',
+      user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Failed to update user status',
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   updateUserRole,
   deleteUser,
+  toggleUserStatus,
 };

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
+  CheckCircle2,
   Mail,
   RefreshCw,
   Search,
@@ -9,6 +10,7 @@ import {
   UserRound,
   Users,
   X,
+  XCircle,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
@@ -58,6 +60,7 @@ const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [togglingStatusId, setTogglingStatusId] = useState(null);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -128,6 +131,43 @@ const AdminUsersPage = () => {
     }
   };
 
+  const handleToggleStatus = async (user) => {
+    const userId = getUserId(user);
+    if (!userId) return;
+
+    const isCurrentlyActive = user.isActive !== false;
+    const nextStatus = !isCurrentlyActive;
+
+    try {
+      setTogglingStatusId(userId);
+      const response = await api.patch(`/api/admin/users/${userId}/status`, {
+        isActive: nextStatus,
+      });
+      const updatedUser = response.data?.user;
+
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUserItem) =>
+          getUserId(currentUserItem) === userId
+            ? { ...currentUserItem, ...(updatedUser || { isActive: nextStatus }) }
+            : currentUserItem
+        )
+      );
+      toast.success(
+        response.data?.message ||
+          (nextStatus ? 'Tài khoản đã được kích hoạt' : 'Tài khoản đã bị khóa')
+      );
+    } catch (error) {
+      toast.error(
+        getErrorMessage(
+          error,
+          nextStatus ? 'Không thể kích hoạt tài khoản' : 'Không thể khóa tài khoản'
+        )
+      );
+    } finally {
+      setTogglingStatusId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     const userId = getUserId(deleteTarget);
     if (!userId) return;
@@ -184,7 +224,49 @@ const AdminUsersPage = () => {
         .admin-users-role-admin { background: #eef2ff; color: #4338ca; }
         .admin-users-role-select { border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 9px; background: #fff; color: #334155; font: inherit; font-size: 12px; }
         .admin-users-role-select:disabled { cursor: wait; opacity: .6; }
-        .admin-users-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+        /* Actions Toolbar */
+        .admin-users-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+        .admin-users-status-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 34px;
+          padding: 0 12px;
+          border-radius: 8px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all .2s ease;
+          white-space: nowrap;
+        }
+        .admin-users-status-active {
+          background: #f0fdf4;
+          color: #16a34a;
+          border: 1px solid #86efac;
+        }
+        .admin-users-status-active:hover:not(:disabled) {
+          background: #dcfce7;
+          border-color: #4ade80;
+          box-shadow: 0 2px 6px rgb(22 163 74 / 15%);
+        }
+        .admin-users-status-inactive {
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fca5a5;
+        }
+        .admin-users-status-inactive:hover:not(:disabled) {
+          background: #fee2e2;
+          border-color: #f87171;
+          box-shadow: 0 2px 6px rgb(220 38 38 / 15%);
+        }
+        .admin-users-status-btn:disabled {
+          cursor: not-allowed;
+          opacity: .5;
+          box-shadow: none;
+        }
+
         .admin-users-action { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; color: #64748b; }
         .admin-users-action:hover:not(:disabled) { background: #f8fafc; color: #0f172a; }
         .admin-users-action-delete:hover:not(:disabled) { border-color: #fecaca; background: #fef2f2; color: #dc2626; }
@@ -281,6 +363,8 @@ const AdminUsersPage = () => {
                     const isCurrentUser = userId === getUserId(currentUser);
                     const isUpdating = updatingId === userId;
                     const isDeleting = deletingId === userId;
+                    const isTogglingStatus = togglingStatusId === userId;
+                    const isActive = user.isActive !== false;
 
                     return (
                       <tr key={userId || user.email}>
@@ -307,13 +391,39 @@ const AdminUsersPage = () => {
                         <td>{formatDate(user.createdAt)}</td>
                         <td>
                           <div className="admin-users-actions">
+                            <button
+                              type="button"
+                              className={`admin-users-status-btn ${
+                                isActive ? 'admin-users-status-active' : 'admin-users-status-inactive'
+                              }`}
+                              onClick={() => handleToggleStatus(user)}
+                              disabled={isCurrentUser || isUpdating || isDeleting || isTogglingStatus}
+                              title={
+                                isCurrentUser
+                                  ? 'Bạn không thể tự khóa tài khoản của chính mình'
+                                  : isActive
+                                  ? 'Tài khoản đang hoạt động. Nhấn để khóa tài khoản'
+                                  : 'Tài khoản đang bị khóa. Nhấn để kích hoạt lại'
+                              }
+                              aria-label={`${isActive ? 'Khóa' : 'Kích hoạt'} tài khoản ${user.name || user.email}`}
+                            >
+                              {isTogglingStatus ? (
+                                <RefreshCw size={14} className="admin-users-spin" />
+                              ) : isActive ? (
+                                <CheckCircle2 size={14} />
+                              ) : (
+                                <XCircle size={14} />
+                              )}
+                              <span>{isActive ? 'Hoạt động' : 'Không hoạt động'}</span>
+                            </button>
+
                             <label>
                               <span className="sr-only">Change role for {user.name || user.email}</span>
                               <select
                                 className="admin-users-role-select"
                                 value={user.role || 'customer'}
                                 onChange={(event) => handleRoleChange(user, event.target.value)}
-                                disabled={isCurrentUser || isUpdating || isDeleting}
+                                disabled={isCurrentUser || isUpdating || isDeleting || isTogglingStatus}
                               >
                                 {Object.entries(ROLE_LABELS).map(([role, label]) => (
                                   <option key={role} value={role}>{label}</option>
@@ -326,7 +436,7 @@ const AdminUsersPage = () => {
                               aria-label={`Delete ${user.name || user.email}`}
                               title={isCurrentUser ? 'You cannot delete your own account' : 'Delete user'}
                               onClick={() => setDeleteTarget(user)}
-                              disabled={isCurrentUser || isUpdating || isDeleting}
+                              disabled={isCurrentUser || isUpdating || isDeleting || isTogglingStatus}
                             >
                               {isDeleting ? <RefreshCw size={16} className="admin-users-spin" /> : <Trash2 size={16} />}
                             </button>

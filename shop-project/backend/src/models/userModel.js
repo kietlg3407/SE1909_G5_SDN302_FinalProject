@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     avatar: { type: String, default: '' },
     role: { type: String, enum: ['customer', 'staff', 'admin'], default: 'customer' },
+    isActive: { type: Boolean, default: true },
     addresses: [addressSchema],
     usedCoupons: [{ type: String }],
   },
