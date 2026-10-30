@@ -7,6 +7,7 @@ import {
   Package,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
   Trash2,
   X,
@@ -44,6 +45,8 @@ const AdminProductsPage = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [query, setQuery] = useState('');
+  const [localQuery, setLocalQuery] = useState('');
+  const [isDebouncing, setIsDebouncing] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -57,6 +60,31 @@ const AdminProductsPage = () => {
   const [togglingId, setTogglingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // 300ms Debounce search input
+  useEffect(() => {
+    if (localQuery.trim() === query) {
+      setIsDebouncing(false);
+      return;
+    }
+
+    setIsDebouncing(true);
+    const timer = setTimeout(() => {
+      setIsDebouncing(false);
+      setQuery(localQuery.trim());
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [localQuery, query]);
+
+  // Clear search query
+  const handleClearQuery = () => {
+    setLocalQuery('');
+    setQuery('');
+    setIsDebouncing(false);
+    setPage(1);
+  };
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -258,25 +286,68 @@ const AdminProductsPage = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
               {/* Search input */}
               <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: '400px' }}>
-                <Search size={16} style={{ position: 'absolute', top: '11px', left: '12px', color: '#94a3b8' }} />
+                {isDebouncing || (loading && Boolean(query)) ? (
+                  <RefreshCw
+                    size={16}
+                    className="admin-users-spin"
+                    style={{ position: 'absolute', top: '11px', left: '12px', color: '#64748b' }}
+                  />
+                ) : (
+                  <Search
+                    size={16}
+                    style={{ position: 'absolute', top: '11px', left: '12px', color: '#94a3b8' }}
+                  />
+                )}
                 <input
                   type="text"
                   placeholder="Tìm theo tên, thương hiệu, danh mục..."
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setPage(1);
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      handleClearQuery();
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      setIsDebouncing(false);
+                      setQuery(localQuery.trim());
+                      setPage(1);
+                    }
                   }}
+                  aria-label="Tìm kiếm sản phẩm trong quản trị"
                   style={{
                     width: '100%',
-                    padding: '8px 12px 8px 36px',
+                    padding: '8px 32px 8px 36px',
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     fontSize: '13px',
                     background: '#ffffff',
                     outline: 'none',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
                   }}
                 />
+                {localQuery && (
+                  <button
+                    type="button"
+                    onClick={handleClearQuery}
+                    style={{
+                      position: 'absolute',
+                      top: '9px',
+                      right: '10px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title="Xóa tìm kiếm"
+                    aria-label="Xóa từ khóa tìm kiếm"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
               </div>
 
               {/* Category Filter */}
@@ -350,24 +421,45 @@ const AdminProductsPage = () => {
               <span>Đang tải danh sách sản phẩm...</span>
             </div>
           ) : products.length === 0 ? (
-            <div className="empty-state-box" style={{ margin: '30px' }}>
-              <Package size={44} className="empty-icon" />
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
-                Không tìm thấy sản phẩm nào
-              </h3>
-              <p style={{ fontSize: '13px', color: '#64748b', margin: '0 auto 16px', maxWidth: '360px' }}>
-                Không có sản phẩm nào khớp với điều kiện tìm kiếm hoặc cửa hàng chưa có sản phẩm.
-              </p>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleOpenCreateModal}
-                style={{ padding: '8px 16px', fontSize: '13px' }}
-              >
-                <Plus size={16} />
-                <span>Thêm sản phẩm đầu tiên</span>
-              </button>
-            </div>
+            query ? (
+              <div className="empty-state-box" style={{ margin: '30px' }}>
+                <Search size={44} className="empty-icon" />
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                  Không tìm thấy sản phẩm
+                </h3>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: '0 auto 16px', maxWidth: '420px', lineHeight: 1.5 }}>
+                  Không tìm thấy sản phẩm phù hợp với từ khóa <strong style={{ color: '#0f172a' }}>&ldquo;{query}&rdquo;</strong>.
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleClearQuery}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px' }}
+                >
+                  <RotateCcw size={14} />
+                  <span>Xóa bộ lọc tìm kiếm</span>
+                </button>
+              </div>
+            ) : (
+              <div className="empty-state-box" style={{ margin: '30px' }}>
+                <Package size={44} className="empty-icon" />
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+                  Không tìm thấy sản phẩm nào
+                </h3>
+                <p style={{ fontSize: '13px', color: '#64748b', margin: '0 auto 16px', maxWidth: '360px' }}>
+                  Không có sản phẩm nào khớp với điều kiện tìm kiếm hoặc cửa hàng chưa có sản phẩm.
+                </p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleOpenCreateModal}
+                  style={{ padding: '8px 16px', fontSize: '13px' }}
+                >
+                  <Plus size={16} />
+                  <span>Thêm sản phẩm đầu tiên</span>
+                </button>
+              </div>
+            )
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left' }}>

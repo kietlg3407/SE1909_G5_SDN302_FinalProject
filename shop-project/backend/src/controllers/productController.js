@@ -32,12 +32,10 @@ const getProducts = async (req, res) => {
         .trim()
         .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       if (sanitizedSearch) {
-        const searchRegex = new RegExp(sanitizedSearch, 'i');
         query.$or = [
-          { name: searchRegex },
-          { description: searchRegex },
-          { brand: searchRegex },
-          { category: searchRegex },
+          { name: { $regex: sanitizedSearch, $options: 'i' } },
+          { description: { $regex: sanitizedSearch, $options: 'i' } },
+          { brand: { $regex: sanitizedSearch, $options: 'i' } },
         ];
       }
     }

@@ -46,6 +46,7 @@ const ProductsPage = () => {
   const [searchInput, setSearchInput] = useState(urlSearch);
   const [localMinPrice, setLocalMinPrice] = useState(urlMinPrice);
   const [localMaxPrice, setLocalMaxPrice] = useState(urlMaxPrice);
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
   // Catalog state
   const [products, setProducts] = useState([]);
@@ -90,13 +91,18 @@ const ProductsPage = () => {
 
   // 300ms Debounce search input
   useEffect(() => {
+    if (searchInput.trim() === urlSearch) {
+      setIsDebouncing(false);
+      return;
+    }
+
+    setIsDebouncing(true);
     const timer = setTimeout(() => {
-      if (searchInput.trim() !== urlSearch) {
-        updateParams({
-          search: searchInput.trim() || undefined,
-          page: 1,
-        });
-      }
+      setIsDebouncing(false);
+      updateParams({
+        search: searchInput.trim() || undefined,
+        page: 1,
+      });
     }, 300);
 
     return () => clearTimeout(timer);
@@ -143,6 +149,7 @@ const ProductsPage = () => {
   // Clear search bar
   const handleClearSearch = () => {
     setSearchInput('');
+    setIsDebouncing(false);
     updateParams({ search: undefined, page: 1 });
   };
 
@@ -159,6 +166,7 @@ const ProductsPage = () => {
   // Reset all filters
   const handleResetAll = () => {
     setSearchInput('');
+    setIsDebouncing(false);
     setLocalMinPrice('');
     setLocalMaxPrice('');
     setSearchParams(new URLSearchParams());
@@ -403,15 +411,38 @@ const ProductsPage = () => {
             >
               {/* 300ms Debounced Search Bar */}
               <div style={{ position: 'relative', flex: '1 1 300px', maxWidth: '480px' }}>
-                <Search
-                  size={18}
-                  style={{ position: 'absolute', top: '11px', left: '12px', color: '#94a3b8' }}
-                />
+                {isDebouncing || (loading && Boolean(urlSearch)) ? (
+                  <RefreshCw
+                    size={18}
+                    className="admin-users-spin"
+                    style={{ position: 'absolute', top: '11px', left: '12px', color: '#64748b' }}
+                  />
+                ) : (
+                  <Search
+                    size={18}
+                    style={{ position: 'absolute', top: '11px', left: '12px', color: '#94a3b8' }}
+                  />
+                )}
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo tên sản phẩm, thương hiệu..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      handleClearSearch();
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      setIsDebouncing(false);
+                      if (searchInput.trim() !== urlSearch) {
+                        updateParams({
+                          search: searchInput.trim() || undefined,
+                          page: 1,
+                        });
+                      }
+                    }
+                  }}
+                  aria-label="Tìm kiếm sản phẩm"
                   style={{
                     width: '100%',
                     padding: '9px 36px 9px 38px',
@@ -419,6 +450,7 @@ const ProductsPage = () => {
                     border: '1px solid #cbd5e1',
                     fontSize: '13px',
                     outline: 'none',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
                   }}
                 />
                 {searchInput && (
@@ -434,6 +466,9 @@ const ProductsPage = () => {
                       color: '#94a3b8',
                       cursor: 'pointer',
                       padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                     title="Xóa từ khóa"
                     aria-label="Xóa từ khóa tìm kiếm"
@@ -473,8 +508,15 @@ const ProductsPage = () => {
 
             {/* Active search hint */}
             {urlSearch && (
-              <div style={{ marginBottom: '16px', fontSize: '14px', color: '#475569' }}>
-                Kết quả tìm kiếm cho: <strong style={{ color: '#0f172a' }}>&ldquo;{urlSearch}&rdquo;</strong> ({total} sản phẩm)
+              <div style={{ marginBottom: '16px', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>Kết quả tìm kiếm cho: <strong style={{ color: '#0f172a' }}>&ldquo;{urlSearch}&rdquo;</strong> ({total} sản phẩm)</span>
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  Xóa lọc
+                </button>
               </div>
             )}
 
@@ -485,22 +527,54 @@ const ProductsPage = () => {
                 <span>Đang tải sản phẩm...</span>
               </div>
             ) : products.length === 0 ? (
-              <div className="empty-state-box">
-                <Search size={48} className="empty-icon" />
-                <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '8px 0' }}>
-                  Không Tìm Thấy Sản Phẩm Nào
-                </h3>
-                <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '420px', margin: '0 auto 20px' }}>
-                  Rất tiếc, hiện tại không có sản phẩm nào phù hợp với tiêu chí tìm kiếm và bộ lọc của bạn. Vui lòng thử lại!
-                </p>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleResetAll}
-                >
-                  Xóa Tất Cả Bộ Lọc
-                </button>
-              </div>
+              urlSearch ? (
+                <div className="empty-state-box">
+                  <Search size={48} className="empty-icon" />
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '8px 0' }}>
+                    Không Tìm Thấy Sản Phẩm Phù Hợp
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '460px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                    Không tìm thấy sản phẩm phù hợp với từ khóa <strong style={{ color: '#0f172a' }}>&ldquo;{urlSearch}&rdquo;</strong>. Vui lòng thử lại với từ khóa khác hoặc xóa bộ lọc tìm kiếm.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleClearSearch}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <X size={15} />
+                      <span>Xóa Từ Khóa Tìm Kiếm</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={handleResetAll}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <RotateCcw size={14} />
+                      <span>Xóa Tất Cả Bộ Lọc</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state-box">
+                  <Search size={48} className="empty-icon" />
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '8px 0' }}>
+                    Không Tìm Thấy Sản Phẩm Nào
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '420px', margin: '0 auto 20px' }}>
+                    Rất tiếc, hiện tại không có sản phẩm nào phù hợp với tiêu chí tìm kiếm và bộ lọc của bạn. Vui lòng thử lại!
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleResetAll}
+                  >
+                    Xóa Tất Cả Bộ Lọc
+                  </button>
+                </div>
+              )
             ) : (
               <div
                 style={{

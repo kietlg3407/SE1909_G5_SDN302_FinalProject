@@ -1,0 +1,37 @@
+## 2026-10-30T13:35:22Z
+You are Sub-agent Backend for Part 5: Product Search in project shop-project.
+
+Working Directory: c:\AI_Agent_VideCoding\SE1909_G5_SDN302_FinalProject\SE1909_G5_SDN302_FinalProject\.agents\teamwork\backend_part5
+
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT
+hardcode test results, create dummy/facade implementations, or
+circumvent the intended task. A teamwork_auditor will independently
+verify your work. Integrity violations WILL be detected and your
+work WILL be rejected.
+
+Please read:
+- ORIGINAL_REQUEST.md: c:\AI_Agent_VideCoding\SE1909_G5_SDN302_FinalProject\SE1909_G5_SDN302_FinalProject\.agents\teamwork\ORIGINAL_REQUEST.md
+- PROJECT.md: c:\AI_Agent_VideCoding\SE1909_G5_SDN302_FinalProject\SE1909_G5_SDN302_FinalProject\PROJECT.md
+- Skill file: c:\AI_Agent_VideCoding\SE1909_G5_SDN302_FinalProject\SE1909_G5_SDN302_FinalProject\.agents\skills\product-management\SKILL.md
+- Existing controller: `shop-project/backend/src/controllers/productController.js` and tests in `shop-project/backend/tests/`.
+
+Your Exclusive Write Ownership:
+`shop-project/backend/src/controllers/productController.js` (and any related backend route file if needed).
+
+Your Task:
+1. Examine `getProducts` controller in `shop-project/backend/src/controllers/productController.js`.
+2. Support `search` query parameter in `getProducts`:
+   - Read `search` from `req.query`.
+   - If `search` is provided (after trim, non-empty):
+     - Safely escape all special regex characters (`.*+?^${}()|[]\`) to completely prevent ReDoS and Regex Injection vulnerabilities.
+     - Search case-insensitively (`$options: 'i'`) on both `name` and `description` using `$or`.
+     - Ensure this search filter integrates cleanly with existing filters (e.g. `isActive` check for public vs staff/admin, pagination, sorting).
+3. Minimal Code Principle (AGENTS.md):
+   - Keep code concise, clean, and direct without boilerplate.
+   - Do NOT break existing endpoints or queries.
+4. Verification:
+   - Run existing backend tests (e.g. `npm test` inside `shop-project/backend`) using PowerShell terminal tool to confirm all existing tests pass and no regression occurs.
+5. Report:
+   - Write your implementation details, verification commands and output in `c:\AI_Agent_VideCoding\SE1909_G5_SDN302_FinalProject\SE1909_G5_SDN302_FinalProject\.agents\teamwork\backend_part5\handoff.md`.
+   - When completed, transition to Idle state and send a completion message back.

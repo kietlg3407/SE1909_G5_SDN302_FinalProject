@@ -33,9 +33,9 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Gate 1: Product Management | F1-F6: Backend input sanitization, AdminProductsPage with CRUD modal & toggle, Sidebar link, ProductsPage basic catalog, Backend & Frontend test suites. STOP & REPORT. | none | IN_PROGRESS |
-| 2 | Gate 2: Product Search | F7-F9: Search query regex escaping, 300ms debounced search bar, clear button, empty state, search tests. STOP & REPORT. | Gate 1 approved | PLANNED |
-| 3 | Gate 3: Product Filter, Sort & URL Sync | F10-F13: Multi-filters, sorting options, pagination, `useSearchParams` URL sync, full test suites & audit. FINAL REPORT. | Gate 2 approved | PLANNED |
+| 1 | Gate 1: Product Management | F1-F6: Backend input sanitization, AdminProductsPage with CRUD modal & toggle, Sidebar link, ProductsPage basic catalog, Backend & Frontend test suites. STOP & REPORT. | none | DONE |
+| 2 | Gate 2: Product Search | F7-F9: Search query regex escaping, 300ms debounced search bar, clear button, empty state, search tests. STOP & REPORT. | Gate 1 approved | APPROVED (DONE) |
+| 3 | Gate 3: Product Filter, Sort & URL Sync | F10-F13: Multi-filters, sorting options, pagination, `useSearchParams` URL sync, full test suites & audit. FINAL REPORT. | Gate 2 approved | READY_FOR_DISPATCH |
 
 ## Interface Contracts
 
