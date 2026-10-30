@@ -35,8 +35,14 @@ const ProfilePage = () => {
 
   useEffect(() => {
     const tab = queryParams.get('tab');
-    if (tab) setActiveTab(tab);
-  }, [location.search]);
+    if (tab) {
+      if (tab === 'addresses' && user?.role && user.role !== 'customer') {
+        setActiveTab('profile');
+      } else {
+        setActiveTab(tab);
+      }
+    }
+  }, [location.search, user?.role]);
 
   // Xử lý upload ảnh đại diện lên Cloudinary
   const handleAvatarUpload = async (e) => {
@@ -173,13 +179,15 @@ const ProfilePage = () => {
             <span>Thông tin cá nhân</span>
           </button>
 
-          <button
-            className={`tab-nav-btn ${activeTab === 'addresses' ? 'active' : ''}`}
-            onClick={() => setActiveTab('addresses')}
-          >
-            <MapPin size={18} />
-            <span>Sổ địa chỉ ({user?.addresses?.length || 0})</span>
-          </button>
+          {user?.role === 'customer' && (
+            <button
+              className={`tab-nav-btn ${activeTab === 'addresses' ? 'active' : ''}`}
+              onClick={() => setActiveTab('addresses')}
+            >
+              <MapPin size={18} />
+              <span>Sổ địa chỉ ({user?.addresses?.length || 0})</span>
+            </button>
+          )}
 
           <button
             className={`tab-nav-btn ${activeTab === 'password' ? 'active' : ''}`}
@@ -246,7 +254,7 @@ const ProfilePage = () => {
             </div>
           )}
 
-          {activeTab === 'addresses' && (
+          {activeTab === 'addresses' && user?.role === 'customer' && (
             <div className="tab-pane">
               <AddressManager />
             </div>

@@ -84,6 +84,11 @@ const couponSchema = new mongoose.Schema(
       },
       default: null,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   { timestamps: true }
 );

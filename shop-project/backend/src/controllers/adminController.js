@@ -13,11 +13,64 @@ const getErrorMessage = (error) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select('-password');
+    const { search, role, page, limit, sortBy } = req.query;
+
+    const query = {};
+
+    // Search by name or email
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [{ name: searchRegex }, { email: searchRegex }];
+    }
+
+    // Filter by role
+    if (role && role !== 'all' && validRoles.includes(role)) {
+      query.role = role;
+    }
+
+    // Sort order
+    let sort = { createdAt: -1 };
+    if (sortBy) {
+      const [field, order] = sortBy.split(':');
+      if (['name', 'email', 'role', 'createdAt'].includes(field)) {
+        sort = { [field]: order === 'asc' || order === '1' ? 1 : -1 };
+      }
+    }
+
+    const totalUsers = await User.countDocuments(query);
+
+    // If client does not specify pagination (or requests all), return all users to preserve compatibility
+    if (req.query.all === 'true' || (!page && !limit)) {
+      const users = await User.find(query).select('-password').sort(sort);
+      return res.status(200).json({
+        message: 'Users retrieved successfully',
+        users,
+        totalUsers,
+        totalPages: 1,
+        currentPage: 1,
+        limit: users.length,
+      });
+    }
+
+    // Standard pagination
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+    const skip = (pageNum - 1) * limitNum;
+    const totalPages = Math.ceil(totalUsers / limitNum) || 1;
+
+    const users = await User.find(query)
+      .select('-password')
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum);
 
     return res.status(200).json({
       message: 'Users retrieved successfully',
       users,
+      totalUsers,
+      totalPages,
+      currentPage: pageNum,
+      limit: limitNum,
     });
   } catch (error) {
     return res.status(500).json({
@@ -49,9 +102,14 @@ const updateUserRole = async (req, res) => {
       });
     }
 
+    const updateData = { role };
+    if (role === 'staff' || role === 'admin') {
+      updateData.addresses = [];
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { role },
+      updateData,
       { returnDocument: 'after', runValidators: true }
     ).select('-password');
 

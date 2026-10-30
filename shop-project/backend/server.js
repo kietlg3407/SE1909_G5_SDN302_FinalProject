@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./src/config/db');
 
 dotenv.config();
@@ -10,12 +12,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// Cấu hình Template Engine EJS cho Admin Dashboard
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'src/views'));
 
 app.get('/', (req, res) => {
-  res.send('API Shop Quần Áo đang chạy...');
+  res.send('API Shop Quần Áo đang chạy... Truy cập /admin để vào Admin Dashboard (EJS)');
 });
 
-// Routes API
+// Admin Dashboard Routes (EJS Engine - Server Side Rendering)
+app.use('/admin', require('./src/routes/adminViewRoutes'));
+
+// Routes REST API (cho React Frontend)
 app.use('/api/users', require('./src/routes/userRoutes'));
 app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));

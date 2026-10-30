@@ -308,7 +308,8 @@ const getAllCoupons = async (req, res) => {
     const coupons = await Coupon.find(filterQuery)
       .sort(sortObj)
       .skip(skip)
-      .limit(paginationValidation.limit);
+      .limit(paginationValidation.limit)
+      .populate('createdBy', 'name email');
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalCount / paginationValidation.limit);
@@ -405,6 +406,7 @@ const createCoupon = async (req, res) => {
     const couponData = {
       ...req.body,
       code: req.body.code.toUpperCase(), // Ensure uppercase
+      createdBy: req.user?._id || null,
     };
 
     const coupon = await Coupon.create(couponData);

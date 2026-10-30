@@ -32,24 +32,12 @@ const Navbar = () => {
         <nav className="nav-links">
           <Link to="/" className="nav-link">Trang chủ</Link>
           <a href="#products" className="nav-link">Bộ sưu tập</a>
-          {isAdmin && (
-            <Link to="/admin/dashboard" className="nav-link admin-nav-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#4338ca', fontWeight: '700' }}>
-              <ShieldCheck size={18} />
-              <span>Trang Quản Trị</span>
-            </Link>
-          )}
         </nav>
 
         {/* User Actions */}
         <div className="nav-actions">
           {isAuthenticated ? (
             <>
-              {isAdmin && (
-                <Link to="/admin/dashboard" className="admin-header-btn" title="Đi đến Trang Quản Trị Admin">
-                  <ShieldCheck size={16} />
-                  <span>Admin Dashboard</span>
-                </Link>
-              )}
               <div className="user-dropdown-wrapper">
                 <button
                   className="user-profile-btn"

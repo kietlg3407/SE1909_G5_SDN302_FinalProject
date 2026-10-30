@@ -1,0 +1,42 @@
+<div class="admin-sidebar d-flex flex-column p-3">
+  <!-- Brand Header -->
+  <div class="d-flex align-items-center gap-2 px-2 py-3 mb-3 border-bottom border-secondary border-opacity-25">
+    <div class="bg-primary text-white p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+      <i class="bi bi-shield-lock-fill fs-5"></i>
+    </div>
+    <div>
+      <h6 class="text-white mb-0 fw-bold">SHOP ADMIN</h6>
+      <small class="text-secondary" style="font-size: 0.75rem;">EJS Dashboard v1.0</small>
+    </div>
+  </div>
+
+  <!-- Navigation Menu -->
+  <ul class="nav nav-pills flex-column mb-auto">
+    <li class="nav-item">
+      <a href="/admin/dashboard" class="nav-link <%= typeof activeTab !== 'undefined' && activeTab === 'dashboard' ? 'active' : '' %>">
+        <i class="bi bi-speedometer2 me-2"></i>
+        Tổng quan (Overview)
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/admin/users" class="nav-link <%= typeof activeTab !== 'undefined' && activeTab === 'users' ? 'active' : '' %>">
+        <i class="bi bi-people me-2"></i>
+        Quản lý Người dùng
+      </a>
+    </li>
+    <li class="nav-item">
+      <a href="/admin/coupons" class="nav-link <%= typeof activeTab !== 'undefined' && activeTab === 'coupons' ? 'active' : '' %>">
+        <i class="bi bi-ticket-perforated me-2"></i>
+        Mã giảm giá (Coupons)
+      </a>
+    </li>
+  </ul>
+
+  <!-- Bottom Info -->
+  <div class="mt-auto pt-3 border-top border-secondary border-opacity-25 px-2">
+    <div class="small text-secondary">
+      <div>Project: <strong>SE1909 G5</strong></div>
+      <div style="font-size: 0.7rem;">Course: SDN302 Final Project</div>
+    </div>
+  </div>
+</div>

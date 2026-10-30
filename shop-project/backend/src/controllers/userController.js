@@ -103,6 +103,18 @@ const loginUser = async (req, res) => {
           message: 'Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động. Vui lòng liên hệ quản trị viên.',
         });
       }
+
+      const token = generateToken(user._id);
+
+      // Nếu là admin, lưu cookie để có thể truy cập song song Admin Dashboard (EJS)
+      if (user.role === 'admin') {
+        res.cookie('admin_token', token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+      }
+
       res.json({
         _id: user._id,
         name: user.name,
@@ -111,7 +123,7 @@ const loginUser = async (req, res) => {
         isActive: user.isActive !== false,
         avatar: user.avatar,
         addresses: user.addresses,
-        token: generateToken(user._id),
+        token,
       });
     } else {
       res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
@@ -128,7 +140,7 @@ const loginUser = async (req, res) => {
 // @access  Private
 const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    const user = await User.findById(req.user._id).select('-password').populate('usedCoupons');
     if (user) {
       res.json(user);
     } else {
@@ -236,13 +248,17 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
-// =================== 3. ADDRESS MANAGEMENT (SỔ ĐỊA CHỈ) ===================
+// =================== 3. ADDRESS MANAGEMENT (SỔ ĐỊA CHỈ - CHỈ DÀNH CHO CUSTOMER) ===================
 
 // @desc    Lấy danh sách địa chỉ nhận hàng (BR-ADDR-04)
 // @route   GET /api/users/addresses
-// @access  Private
+// @access  Private (Customer only)
 const getAddresses = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Chức năng sổ địa chỉ nhận hàng chỉ áp dụng cho tài khoản Khách hàng' });
+    }
+
     const user = await User.findById(req.user._id);
     if (user) {
       res.json(user.addresses || []);
@@ -256,9 +272,13 @@ const getAddresses = async (req, res) => {
 
 // @desc    Thêm địa chỉ giao hàng mới (BR-ADDR-01, BR-ADDR-02)
 // @route   POST /api/users/addresses
-// @access  Private
+// @access  Private (Customer only)
 const addAddress = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Tài khoản nhân viên hoặc quản trị viên không được sử dụng chức năng địa chỉ nhận hàng' });
+    }
+
     const { street, city, state, phone, isDefault } = req.body;
 
     // BR-ADDR-01: Bắt buộc điền đủ thông tin
@@ -305,9 +325,13 @@ const addAddress = async (req, res) => {
 
 // @desc    Cập nhật địa chỉ (BR-ADDR-01, BR-ADDR-02)
 // @route   PUT /api/users/addresses/:addressId
-// @access  Private
+// @access  Private (Customer only)
 const updateAddress = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Chức năng sổ địa chỉ nhận hàng chỉ áp dụng cho tài khoản Khách hàng' });
+    }
+
     const { addressId } = req.params;
     const { street, city, state, phone, isDefault } = req.body;
 
@@ -349,9 +373,13 @@ const updateAddress = async (req, res) => {
 
 // @desc    Xóa địa chỉ (BR-ADDR-03)
 // @route   DELETE /api/users/addresses/:addressId
-// @access  Private
+// @access  Private (Customer only)
 const deleteAddress = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Chức năng sổ địa chỉ nhận hàng chỉ áp dụng cho tài khoản Khách hàng' });
+    }
+
     const { addressId } = req.params;
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -380,9 +408,13 @@ const deleteAddress = async (req, res) => {
 
 // @desc    Đặt địa chỉ làm mặc định (BR-ADDR-02)
 // @route   PUT /api/users/addresses/:addressId/default
-// @access  Private
+// @access  Private (Customer only)
 const setDefaultAddress = async (req, res) => {
   try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Chức năng sổ địa chỉ nhận hàng chỉ áp dụng cho tài khoản Khách hàng' });
+    }
+
     const { addressId } = req.params;
     const user = await User.findById(req.user._id);
     if (!user) {
