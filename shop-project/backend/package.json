@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "seed:roles": "node scripts/seed-roles.js",
     "test": "jest",
     "test:node": "node --test --test-concurrency=1 tests/e2e-admin-flow.test.js tests/error-handling.test.js tests/performance.test.js tests/admin-new-features.test.js tests/staff-coupon-rbac.test.js",
     "test:watch": "jest --watch",
