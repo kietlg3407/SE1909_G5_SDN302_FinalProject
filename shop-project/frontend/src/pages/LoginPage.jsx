@@ -21,7 +21,7 @@ const LoginPage = () => {
     setLoading(false);
 
     if (res.success) {
-      if (res.user?.role === 'admin') {
+      if (res.user?.role === 'admin' || res.user?.role === 'staff') {
         navigate('/admin/dashboard', { replace: true });
       } else {
         navigate('/', { replace: true });

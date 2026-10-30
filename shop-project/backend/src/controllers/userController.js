@@ -1,3 +1,4 @@
+const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 

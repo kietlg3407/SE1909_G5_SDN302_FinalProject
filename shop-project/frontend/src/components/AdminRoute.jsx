@@ -18,7 +18,7 @@ const LoadingState = () => (
   </div>
 );
 
-const UnauthorizedState = () => {
+const UnauthorizedState = ({ message = 'Bạn cần có quyền quản trị viên hoặc nhân viên để xem trang này.' }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -33,19 +33,24 @@ const UnauthorizedState = () => {
         <ShieldX size={48} aria-hidden="true" />
         <h1>403</h1>
         <h2>Không Có Quyền Truy Cập</h2>
-        <p>Bạn cần có quyền quản trị viên để xem trang này.</p>
-        <button type="button" className="btn-primary" onClick={() => navigate('/')}>
-          Quay Về Trang Chủ
-        </button>
-        <button type="button" className="btn-secondary" onClick={handleLogoutAndLogin}>
-          Đăng Xuất và Đăng Nhập Lại
-        </button>
+        <p>{message}</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
+          <button type="button" className="btn-primary" onClick={() => navigate('/admin/dashboard')}>
+            Về Dashboard
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => navigate('/')}>
+            Quay Về Trang Chủ
+          </button>
+          <button type="button" className="btn-outline" onClick={handleLogoutAndLogin}>
+            Đăng Nhập Lại
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-const AdminRoute = ({ children }) => {
+const AdminRoute = ({ allowedRoles = ['admin', 'staff'], children }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -56,8 +61,11 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'admin') {
-    return <UnauthorizedState />;
+  if (!allowedRoles.includes(user.role)) {
+    const message = allowedRoles.includes('admin') && !allowedRoles.includes('staff')
+      ? 'Chỉ có Quản trị viên (Admin) mới có quyền truy cập vào chức năng Quản lý Người dùng này.'
+      : 'Bạn không có quyền truy cập vào trang này.';
+    return <UnauthorizedState message={message} />;
   }
 
   return children !== undefined ? children : <Outlet />;

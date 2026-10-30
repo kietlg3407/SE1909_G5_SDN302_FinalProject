@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
+  UserPlus,
+  Lock,
   CheckCircle2,
   Mail,
   RefreshCw,
@@ -64,6 +66,67 @@ const AdminUsersPage = () => {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [showCreateStaffModal, setShowCreateStaffModal] = useState(false);
+  const [creatingStaff, setCreatingStaff] = useState(false);
+  const [staffForm, setStaffForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  const handleCreateStaffSubmit = async (e) => {
+    e.preventDefault();
+    const { name, email, password, confirmPassword } = staffForm;
+
+    if (!name || !email || !password) {
+      toast.error('Vui lòng điền đầy đủ họ tên, email và mật khẩu');
+      return;
+    }
+
+    if (name.trim().length < 2) {
+      toast.error('Họ tên phải có độ dài từ 2 ký tự trở lên');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim().toLowerCase())) {
+      toast.error('Định dạng email không hợp lệ');
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
+    try {
+      setCreatingStaff(true);
+      const response = await api.post('/api/admin/staff', {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      });
+
+      const newStaff = response.data?.user;
+      if (newStaff) {
+        setUsers((prev) => [newStaff, ...prev]);
+      }
+
+      toast.success(response.data?.message || 'Tạo tài khoản Staff thành công');
+      setStaffForm({ name: '', email: '', password: '', confirmPassword: '' });
+      setShowCreateStaffModal(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Không thể tạo tài khoản nhân viên'));
+    } finally {
+      setCreatingStaff(false);
+    }
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -297,6 +360,29 @@ const AdminUsersPage = () => {
             <h1>User Management</h1>
             <p>Review registered users and manage their access roles.</p>
           </div>
+          <button
+            type="button"
+            className="btn-create-staff"
+            onClick={() => setShowCreateStaffModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              background: '#0284c7',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'background .2s',
+              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+            }}
+          >
+            <UserPlus size={16} />
+            <span>Thêm Tài Khoản Staff</span>
+          </button>
         </header>
 
         <section className="admin-users-card" aria-label="Registered users">
@@ -499,6 +585,219 @@ const AdminUsersPage = () => {
                 Delete account
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tạo Tài Khoản Staff */}
+      {showCreateStaffModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="create-staff-modal-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '460px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 24px',
+                borderBottom: '1px solid #e2e8f0',
+                background: '#f8fafc',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    background: '#e0f2fe',
+                    color: '#0284c7',
+                  }}
+                >
+                  <UserPlus size={20} />
+                </div>
+                <div>
+                  <h3 id="create-staff-modal-title" style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>
+                    Tạo Tài Khoản Staff
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                    Cấp quyền nhân viên quản trị (Coupon & Thống kê)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateStaffModal(false)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px',
+                }}
+                disabled={creatingStaff}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStaffSubmit} style={{ padding: '24px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Họ và tên <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: Nguyễn Văn A"
+                  value={staffForm.name}
+                  onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Email đăng nhập <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="staff@shop.com"
+                  value={staffForm.email}
+                  onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Mật khẩu <span style={{ color: '#ef4444' }}>*</span> (tối thiểu 6 ký tự)
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={staffForm.password}
+                  onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={staffForm.confirmPassword}
+                  onChange={(e) => setStaffForm({ ...staffForm, confirmPassword: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateStaffModal(false)}
+                  disabled={creatingStaff}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingStaff}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 18px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    cursor: creatingStaff ? 'not-allowed' : 'pointer',
+                    opacity: creatingStaff ? 0.7 : 1,
+                  }}
+                >
+                  {creatingStaff && <RefreshCw size={14} className="admin-users-spin" />}
+                  <span>{creatingStaff ? 'Đang tạo...' : 'Tạo Tài Khoản'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

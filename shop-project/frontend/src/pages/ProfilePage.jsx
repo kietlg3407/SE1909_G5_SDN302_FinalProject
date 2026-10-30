@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AddressManager from '../components/AddressManager';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { User, MapPin, KeyRound, Camera, Shield, Mail, Calendar, Check, Save } from 'lucide-react';
+import { User, MapPin, KeyRound, Camera, Shield, Mail, Calendar, Check, Save, Tag, Copy } from 'lucide-react';
 
 const ProfilePage = () => {
   const { user, updateProfile, changePassword, refreshUser } = useAuth();
@@ -26,6 +26,7 @@ const ProfilePage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
+  const [copiedVoucher, setCopiedVoucher] = useState(false);
 
   useEffect(() => {
     if (user?.name) {

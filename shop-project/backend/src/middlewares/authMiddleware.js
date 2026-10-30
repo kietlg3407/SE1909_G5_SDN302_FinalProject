@@ -31,4 +31,31 @@ const isAdmin = (req, res, next) => {
   return res.status(403).json({ message: 'Bạn không có quyền truy cập. Chỉ quản trị viên mới được phép.' });
 };
 
-module.exports = { protect, isAdmin, admin: isAdmin };
+const isStaffOrAdmin = (req, res, next) => {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'staff')) {
+    return next();
+  }
+
+  return res.status(403).json({
+    message: 'Bạn không có quyền truy cập. Chỉ quản trị viên hoặc nhân viên mới được phép.',
+  });
+};
+
+const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `Bạn không có quyền truy cập. Yêu cầu một trong các vai trò: ${roles.join(', ')}`,
+      });
+    }
+    next();
+  };
+};
+
+module.exports = {
+  protect,
+  isAdmin,
+  admin: isAdmin,
+  isStaffOrAdmin,
+  authorizeRoles,
+};

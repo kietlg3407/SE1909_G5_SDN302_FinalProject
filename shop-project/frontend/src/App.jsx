@@ -97,13 +97,21 @@ function App() {
             />
           </Route>
 
-          {/* Admin Protected Routes - chỉ áp dụng cho tiền tố /admin */}
-          <Route path="/admin" element={<AdminRoute />}>
+          {/* Phân hệ Quản trị /admin: Cho phép cả Admin và Staff */}
+          <Route path="/admin" element={<AdminRoute allowedRoles={['admin', 'staff']} />}>
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
               <Route path="coupons" element={<CouponsPage />} />
+              {/* Trang Quản lý Người dùng: Chỉ cho phép Quản trị viên (Admin) */}
+              <Route
+                path="users"
+                element={
+                  <AdminRoute allowedRoles={['admin']}>
+                    <AdminUsersPage />
+                  </AdminRoute>
+                }
+              />
             </Route>
           </Route>
 
