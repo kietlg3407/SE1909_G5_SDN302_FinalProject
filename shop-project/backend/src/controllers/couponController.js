@@ -1,4 +1,5 @@
 const Coupon = require('../models/couponModel');
+const User = require('../models/userModel');
 
 const couponFields = [
   'code',
@@ -630,6 +631,23 @@ const deleteCoupon = async (req, res) => {
     // Log incoming request
     logRequest(req, { action: 'deleteCoupon', id: req.params.id });
 
+    // Protect system default coupon WELCOME10
+    const couponToCheck = await Coupon.findById(req.params.id);
+    if (!couponToCheck) {
+      logRequest(req, {
+        action: 'deleteCoupon',
+        result: 'not_found',
+        id: req.params.id,
+      });
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+
+    if (couponToCheck.code === 'WELCOME10') {
+      return res.status(400).json({
+        message: 'Không thể xóa mã giảm giá hệ thống WELCOME10',
+      });
+    }
+
     const coupon = await Coupon.findByIdAndDelete(req.params.id);
 
     if (!coupon) {
@@ -679,9 +697,120 @@ const deleteCoupon = async (req, res) => {
   }
 };
 
+
+// @desc    Khách hàng áp dụng mã giảm giá (kiểm tra điều kiện & tính toán)
+// @route   POST /api/coupons/apply
+// @access  Private (Khách hàng đã đăng nhập)
+const applyCoupon = async (req, res) => {
+  try {
+    const { code, orderAmount = 0 } = req.body;
+
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ message: 'Vui lòng cung cấp mã giảm giá' });
+    }
+
+    const upperCode = code.trim().toUpperCase();
+    const coupon = await Coupon.findOne({ code: upperCode });
+
+    if (!coupon) {
+      return res.status(404).json({ message: 'Mã giảm giá không tồn tại trên hệ thống' });
+    }
+
+    // Kiểm tra hạn sử dụng
+    if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
+      return res.status(400).json({ message: 'Mã giảm giá đã hết hạn sử dụng' });
+    }
+
+    // Kiểm tra đơn hàng tối thiểu
+    const subtotal = Number(orderAmount) || 0;
+    if (coupon.minOrderValue && subtotal < coupon.minOrderValue) {
+      return res.status(400).json({
+        message: `Đơn hàng tối thiểu phải từ ${coupon.minOrderValue.toLocaleString()}đ để áp dụng mã này`,
+      });
+    }
+
+    // Kiểm tra ràng buộc sử dụng 1 lần duy nhất cho mỗi khách hàng (đặc biệt mã WELCOME10)
+    const user = await User.findById(req.user._id);
+    const usedCoupons = user?.usedCoupons || [];
+    const isAlreadyUsed = usedCoupons.some((item) => item.toString() === coupon._id.toString() || item.toString() === upperCode);
+    if (isAlreadyUsed) {
+      return res.status(400).json({
+        message: 'Mã giảm giá này chỉ được sử dụng một lần và bạn đã sử dụng rồi',
+      });
+    }
+
+    // Tính toán số tiền giảm
+    let discountAmount = 0;
+    if (coupon.discountType === 'percentage') {
+      discountAmount = Math.round((subtotal * coupon.discountValue) / 100);
+    } else {
+      discountAmount = Math.min(coupon.discountValue, subtotal);
+    }
+
+    const finalAmount = Math.max(0, subtotal - discountAmount);
+
+    return res.status(200).json({
+      message: 'Áp dụng mã giảm giá thành công',
+      coupon: {
+        code: coupon.code,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        minOrderValue: coupon.minOrderValue,
+      },
+      discountAmount,
+      finalAmount,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Không thể áp dụng mã giảm giá',
+      error: getErrorMessage(error),
+    });
+  }
+};
+
+// @desc    Ghi nhận mã giảm giá đã được sử dụng vào tài khoản
+// @route   POST /api/coupons/consume
+// @access  Private (Khách hàng đã đăng nhập)
+const consumeCoupon = async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: 'Mã giảm giá là bắt buộc' });
+    }
+
+    const upperCode = code.trim().toUpperCase();
+    const coupon = await Coupon.findOne({ code: upperCode });
+    if (!coupon) {
+      return res.status(404).json({ message: 'Mã giảm giá không tồn tại' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $addToSet: { usedCoupons: coupon._id } },
+      { returnDocument: 'after' }
+    ).populate('usedCoupons');
+
+    const couponCodes = (updatedUser?.usedCoupons || []).map((c) =>
+      typeof c === 'object' && c?.code ? c.code : c.toString()
+    );
+
+    return res.status(200).json({
+      message: `Đã ghi nhận sử dụng mã giảm giá ${upperCode}`,
+      usedCoupons: couponCodes,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Không thể ghi nhận sử dụng mã giảm giá',
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 module.exports = {
   getAllCoupons,
   createCoupon,
   updateCoupon,
   deleteCoupon,
+  applyCoupon,
+  consumeCoupon,
 };

@@ -240,9 +240,74 @@ const toggleUserStatus = async (req, res) => {
   }
 };
 
+const createStaffUser = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        message: 'Vui lòng cung cấp đầy đủ họ tên, email và mật khẩu',
+      });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      return res.status(400).json({
+        message: 'Họ tên phải có độ dài từ 2 đến 100 ký tự',
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return res.status(400).json({
+        message: 'Định dạng email không hợp lệ',
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: 'Mật khẩu phải có ít nhất 6 ký tự',
+      });
+    }
+
+    const userExists = await User.findOne({ email: cleanEmail });
+    if (userExists) {
+      return res.status(400).json({
+        message: 'Email này đã được sử dụng trong hệ thống',
+      });
+    }
+
+    const staffUser = await User.create({
+      name: trimmedName,
+      email: cleanEmail,
+      password,
+      role: 'staff',
+      isActive: true,
+      avatar: '',
+      addresses: [],
+      usedCoupons: [],
+    });
+
+    const userObj = staffUser.toObject();
+    delete userObj.password;
+
+    return res.status(201).json({
+      message: 'Tạo tài khoản nhân viên (Staff) thành công',
+      user: userObj,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Không thể tạo tài khoản nhân viên',
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   updateUserRole,
   deleteUser,
   toggleUserStatus,
+  createStaffUser,
 };
