@@ -14,6 +14,8 @@ import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/admin/DashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import CouponsPage from './pages/admin/CouponsPage';
+import ProductsPage from './pages/ProductsPage';
+import AdminProductsPage from './pages/admin/AdminProductsPage';
 import './index.css';
 
 const NotFound = () => (
@@ -70,7 +72,7 @@ function App() {
           {/* Public & Customer Routes */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
-            <Route path="/products" element={<HomePage />} />
+            <Route path="/products" element={<ProductsPage />} />
             <Route
               path="/login"
               element={
@@ -102,6 +104,7 @@ function App() {
             <Route element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="products" element={<AdminProductsPage />} />
               <Route path="coupons" element={<CouponsPage />} />
               {/* Trang Quản lý Người dùng: Chỉ cho phép Quản trị viên (Admin) */}
               <Route

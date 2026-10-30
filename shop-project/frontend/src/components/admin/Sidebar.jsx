@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Menu, Tag, Users, X, Shield, UserCheck } from 'lucide-react';
+import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -22,11 +22,18 @@ const navigationItems = [
     icon: Tag,
     roles: ['admin', 'staff'],
   },
+  {
+    label: 'Quản lý sản phẩm',
+    path: '/admin/products',
+    icon: Package,
+    roles: ['admin', 'staff'],
+  },
 ];
 
 const Sidebar = () => {
   let user = null;
   try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const auth = useAuth();
     user = auth?.user;
   } catch {
