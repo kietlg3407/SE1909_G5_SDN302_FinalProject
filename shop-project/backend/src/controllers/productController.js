@@ -14,11 +14,20 @@ const getProducts = async (req, res) => {
 
     const query = {};
 
-    // Mặc định chỉ hiển thị sản phẩm đang hoạt động, trừ khi admin/staff yêu cầu xem tất cả
+    // Mặc định chỉ hiển thị sản phẩm đang hoạt động, trừ khi admin/staff yêu cầu xem tất cả hoặc lọc theo trạng thái
     const isStaffOrAdminReq = req.user && ['admin', 'staff'].includes(req.user.role);
     if (isStaffOrAdminReq) {
-      if (req.query.isActive !== undefined && req.query.isActive !== 'all') {
-        query.isActive = req.query.isActive === 'true';
+      const statusParam = req.query.status;
+      const isActiveParam = req.query.isActive;
+
+      if (statusParam !== undefined && statusParam !== 'all') {
+        if (statusParam === 'active' || statusParam === 'true' || statusParam === true) {
+          query.isActive = true;
+        } else if (statusParam === 'inactive' || statusParam === 'false' || statusParam === false) {
+          query.isActive = false;
+        }
+      } else if (isActiveParam !== undefined && isActiveParam !== 'all') {
+        query.isActive = isActiveParam === 'true' || isActiveParam === true;
       }
     } else {
       query.isActive = true;
@@ -40,10 +49,13 @@ const getProducts = async (req, res) => {
       }
     }
 
-    // 2. Lọc theo danh mục (Category Filter)
+    // 2. Lọc theo danh mục (Category Filter - bỏ qua nếu 'Tất cả' hoặc 'all')
     const rawCategory = Array.isArray(req.query.category) ? req.query.category[0] : req.query.category;
-    if (typeof rawCategory === 'string' && rawCategory.trim() && rawCategory.trim() !== 'all') {
-      query.category = rawCategory.trim();
+    if (typeof rawCategory === 'string' && rawCategory.trim()) {
+      const cat = rawCategory.trim();
+      if (cat !== 'all' && cat.toLowerCase() !== 'tất cả') {
+        query.category = cat;
+      }
     }
 
     // Lọc theo thương hiệu (Brand Filter)
@@ -52,49 +64,64 @@ const getProducts = async (req, res) => {
       query.brand = rawBrand.trim();
     }
 
-    // 3. Lọc theo khoảng giá (Price Filter)
-    const hasMin = req.query.minPrice !== undefined && req.query.minPrice !== '';
-    const hasMax = req.query.maxPrice !== undefined && req.query.maxPrice !== '';
-    const minVal = hasMin ? Number(req.query.minPrice) : null;
-    const maxVal = hasMax ? Number(req.query.maxPrice) : null;
+    // 3. Lọc theo khoảng giá (Price Filter - validate số không âm)
+    const rawMinPrice = Array.isArray(req.query.minPrice) ? req.query.minPrice[0] : req.query.minPrice;
+    const rawMaxPrice = Array.isArray(req.query.maxPrice) ? req.query.maxPrice[0] : req.query.maxPrice;
+    const hasMin = rawMinPrice !== undefined && rawMinPrice !== '';
+    const hasMax = rawMaxPrice !== undefined && rawMaxPrice !== '';
+    const minVal = hasMin ? Number(rawMinPrice) : null;
+    const maxVal = hasMax ? Number(rawMaxPrice) : null;
 
-    if ((minVal !== null && !isNaN(minVal)) || (maxVal !== null && !isNaN(maxVal))) {
+    const isValidMin = minVal !== null && !isNaN(minVal) && minVal >= 0;
+    const isValidMax = maxVal !== null && !isNaN(maxVal) && maxVal >= 0;
+
+    if (isValidMin || isValidMax) {
       query.price = {};
-      if (minVal !== null && !isNaN(minVal)) {
+      if (isValidMin) {
         query.price.$gte = minVal;
       }
-      if (maxVal !== null && !isNaN(maxVal)) {
+      if (isValidMax) {
         query.price.$lte = maxVal;
       }
     }
 
     // 4. Lọc trạng thái còn hàng (In Stock Filter)
-    if (req.query.inStock === 'true') {
+    const rawInStock = Array.isArray(req.query.inStock) ? req.query.inStock[0] : req.query.inStock;
+    if (rawInStock === 'true' || rawInStock === true) {
       query.stock = { $gt: 0 };
     }
 
     // 5. Sắp xếp (Sort)
     let sort = { createdAt: -1 }; // Mặc định mới nhất
-    if (req.query.sortBy) {
-      switch (req.query.sortBy) {
+    const sortParam = req.query.sortBy || req.query.sort;
+    const rawSort = Array.isArray(sortParam) ? sortParam[0] : sortParam;
+    if (rawSort) {
+      switch (rawSort) {
+        case 'price-asc':
         case 'price_asc':
           sort = { price: 1 };
           break;
+        case 'price-desc':
         case 'price_desc':
           sort = { price: -1 };
           break;
+        case 'rating':
         case 'rating_desc':
+        case 'rating-desc':
           sort = { rating: -1 };
           break;
+        case 'name-asc':
         case 'name_asc':
           sort = { name: 1 };
           break;
+        case 'name-desc':
         case 'name_desc':
           sort = { name: -1 };
           break;
         case 'oldest':
           sort = { createdAt: 1 };
           break;
+        case 'newest':
         default:
           sort = { createdAt: -1 };
       }

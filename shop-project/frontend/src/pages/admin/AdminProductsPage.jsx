@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useInRouterContext, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   AlertTriangle,
@@ -16,6 +17,14 @@ import {
 import api from '../../services/api';
 
 const CATEGORIES = ['Áo', 'Quần', 'Váy', 'Áo khoác', 'Phụ kiện', 'Giày dép', 'Khác'];
+
+const SORT_OPTIONS = [
+  { label: 'Sắp xếp: Mới nhất', value: '' },
+  { label: 'Cũ nhất', value: 'oldest' },
+  { label: 'Giá: Thấp đến Cao', value: 'price_asc' },
+  { label: 'Giá: Cao đến Thấp', value: 'price_desc' },
+  { label: 'Tên: A đến Z', value: 'name_asc' },
+];
 
 const INITIAL_FORM = {
   name: '',
@@ -38,17 +47,23 @@ const formatCurrency = (val) =>
 
 const getProductId = (product) => product?._id || product?.id;
 
-const AdminProductsPage = () => {
+const AdminProductsContent = ({ searchParams, setSearchParams }) => {
+  // Read state from URL search params (Single Source of Truth)
+  const urlSearch = searchParams.get('search') || '';
+  const urlCategory = searchParams.get('category') || 'all';
+  const urlStatus = searchParams.get('status') || 'all';
+  const urlSortBy = searchParams.get('sortBy') || '';
+  const urlPage = parseInt(searchParams.get('page') || '1', 10);
+
+  // Local state for search bar & UI feedback
+  const [localQuery, setLocalQuery] = useState(urlSearch);
+  const [isDebouncing, setIsDebouncing] = useState(false);
+
+  // Data state
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [query, setQuery] = useState('');
-  const [localQuery, setLocalQuery] = useState('');
-  const [isDebouncing, setIsDebouncing] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -61,9 +76,39 @@ const AdminProductsPage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Synchronize local input when URL changes externally (e.g. browser back/forward)
+  useEffect(() => {
+    setLocalQuery(urlSearch);
+  }, [urlSearch]);
+
+  // Two-way URL Sync helper: strips default/falsy parameters
+  const updateParams = useCallback(
+    (newParams) => {
+      setSearchParams((prev) => {
+        const updated = new URLSearchParams(prev);
+        Object.entries(newParams).forEach(([key, value]) => {
+          if (
+            value === undefined ||
+            value === null ||
+            value === '' ||
+            value === 'Tất cả' ||
+            value === 'all' ||
+            (key === 'page' && Number(value) === 1)
+          ) {
+            updated.delete(key);
+          } else {
+            updated.set(key, String(value));
+          }
+        });
+        return updated;
+      });
+    },
+    [setSearchParams]
+  );
+
   // 300ms Debounce search input
   useEffect(() => {
-    if (localQuery.trim() === query) {
+    if (localQuery.trim() === urlSearch) {
       setIsDebouncing(false);
       return;
     }
@@ -71,33 +116,29 @@ const AdminProductsPage = () => {
     setIsDebouncing(true);
     const timer = setTimeout(() => {
       setIsDebouncing(false);
-      setQuery(localQuery.trim());
-      setPage(1);
+      updateParams({
+        search: localQuery.trim() || undefined,
+        page: 1,
+      });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [localQuery, query]);
+  }, [localQuery, urlSearch, updateParams]);
 
-  // Clear search query
-  const handleClearQuery = () => {
-    setLocalQuery('');
-    setQuery('');
-    setIsDebouncing(false);
-    setPage(1);
-  };
-
+  // Fetch products from backend based on URL parameters
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
-        page,
+        page: urlPage,
         limit: 10,
       };
 
-      if (query.trim()) params.search = query.trim();
-      if (categoryFilter !== 'all') params.category = categoryFilter;
-      if (statusFilter === 'active') params.isActive = 'true';
-      if (statusFilter === 'inactive') params.isActive = 'false';
+      if (urlSearch) params.search = urlSearch;
+      if (urlCategory !== 'all') params.category = urlCategory;
+      if (urlStatus === 'active') params.isActive = 'true';
+      if (urlStatus === 'inactive') params.isActive = 'false';
+      if (urlSortBy) params.sortBy = urlSortBy;
 
       const response = await api.get('/api/products', { params });
       const data = response.data;
@@ -116,11 +157,18 @@ const AdminProductsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, query, categoryFilter, statusFilter]);
+  }, [urlPage, urlSearch, urlCategory, urlStatus, urlSortBy]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Clear search query
+  const handleClearQuery = () => {
+    setLocalQuery('');
+    setIsDebouncing(false);
+    updateParams({ search: undefined, page: 1 });
+  };
 
   // Open modal for Create
   const handleOpenCreateModal = () => {
@@ -285,8 +333,8 @@ const AdminProductsPage = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', padding: '18px 20px', borderBottom: '1px solid #e2e8f0', background: '#fafbfc' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
               {/* Search input */}
-              <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: '400px' }}>
-                {isDebouncing || (loading && Boolean(query)) ? (
+              <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: '380px' }}>
+                {isDebouncing || (loading && Boolean(urlSearch)) ? (
                   <RefreshCw
                     size={16}
                     className="admin-users-spin"
@@ -309,8 +357,9 @@ const AdminProductsPage = () => {
                     } else if (e.key === 'Enter') {
                       e.preventDefault();
                       setIsDebouncing(false);
-                      setQuery(localQuery.trim());
-                      setPage(1);
+                      if (localQuery.trim() !== urlSearch) {
+                        updateParams({ search: localQuery.trim() || undefined, page: 1 });
+                      }
                     }
                   }}
                   aria-label="Tìm kiếm sản phẩm trong quản trị"
@@ -353,11 +402,8 @@ const AdminProductsPage = () => {
               {/* Category Filter */}
               <select
                 aria-label="Lọc theo danh mục"
-                value={categoryFilter}
-                onChange={(e) => {
-                  setCategoryFilter(e.target.value);
-                  setPage(1);
-                }}
+                value={urlCategory}
+                onChange={(e) => updateParams({ category: e.target.value, page: 1 })}
                 style={{
                   padding: '8px 12px',
                   borderRadius: '8px',
@@ -376,11 +422,8 @@ const AdminProductsPage = () => {
               {/* Status Filter */}
               <select
                 aria-label="Lọc theo trạng thái"
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setPage(1);
-                }}
+                value={urlStatus}
+                onChange={(e) => updateParams({ status: e.target.value, page: 1 })}
                 style={{
                   padding: '8px 12px',
                   borderRadius: '8px',
@@ -393,6 +436,25 @@ const AdminProductsPage = () => {
                 <option value="all">Tất cả trạng thái</option>
                 <option value="active">Đang hoạt động</option>
                 <option value="inactive">Tạm ẩn</option>
+              </select>
+
+              {/* Sort By Filter */}
+              <select
+                aria-label="Sắp xếp sản phẩm"
+                value={urlSortBy}
+                onChange={(e) => updateParams({ sortBy: e.target.value, page: 1 })}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  background: '#ffffff',
+                  color: '#334155',
+                }}
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
 
@@ -421,14 +483,14 @@ const AdminProductsPage = () => {
               <span>Đang tải danh sách sản phẩm...</span>
             </div>
           ) : products.length === 0 ? (
-            query ? (
+            urlSearch ? (
               <div className="empty-state-box" style={{ margin: '30px' }}>
                 <Search size={44} className="empty-icon" />
                 <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
                   Không tìm thấy sản phẩm
                 </h3>
                 <p style={{ fontSize: '13px', color: '#64748b', margin: '0 auto 16px', maxWidth: '420px', lineHeight: 1.5 }}>
-                  Không tìm thấy sản phẩm phù hợp với từ khóa <strong style={{ color: '#0f172a' }}>&ldquo;{query}&rdquo;</strong>.
+                  Không tìm thấy sản phẩm phù hợp với từ khóa <strong style={{ color: '#0f172a' }}>&ldquo;{urlSearch}&rdquo;</strong>.
                 </p>
                 <button
                   type="button"
@@ -696,14 +758,14 @@ const AdminProductsPage = () => {
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#fafbfc' }}>
               <span style={{ fontSize: '13px', color: '#64748b' }}>
-                Trang {page} / {totalPages}
+                Trang {urlPage} / {totalPages}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
+                  onClick={() => updateParams({ page: Math.max(1, urlPage - 1) })}
+                  disabled={urlPage <= 1}
                   style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Trước
@@ -712,15 +774,15 @@ const AdminProductsPage = () => {
                   <button
                     key={pNum}
                     type="button"
-                    onClick={() => setPage(pNum)}
+                    onClick={() => updateParams({ page: pNum })}
                     style={{
                       padding: '6px 12px',
                       fontSize: '12px',
                       borderRadius: '8px',
                       fontWeight: 600,
-                      border: pNum === page ? '1px solid #0f172a' : '1px solid #cbd5e1',
-                      background: pNum === page ? '#0f172a' : '#ffffff',
-                      color: pNum === page ? '#ffffff' : '#334155',
+                      border: pNum === urlPage ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                      background: pNum === urlPage ? '#0f172a' : '#ffffff',
+                      color: pNum === urlPage ? '#ffffff' : '#334155',
                       cursor: 'pointer',
                     }}
                   >
@@ -730,8 +792,8 @@ const AdminProductsPage = () => {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
+                  onClick={() => updateParams({ page: Math.min(totalPages, urlPage + 1) })}
+                  disabled={urlPage >= totalPages}
                   style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
                   Sau
@@ -1034,6 +1096,26 @@ const AdminProductsPage = () => {
       )}
     </div>
   );
+};
+
+const AdminProductsWithRouter = (props) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  return <AdminProductsContent searchParams={searchParams} setSearchParams={setSearchParams} {...props} />;
+};
+
+const AdminProductsStandalone = (props) => {
+  const [params, setParams] = useState(
+    () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  );
+  return <AdminProductsContent searchParams={params} setSearchParams={setParams} {...props} />;
+};
+
+const AdminProductsPage = (props) => {
+  const inRouter = useInRouterContext();
+  if (inRouter) {
+    return <AdminProductsWithRouter {...props} />;
+  }
+  return <AdminProductsStandalone {...props} />;
 };
 
 export default AdminProductsPage;

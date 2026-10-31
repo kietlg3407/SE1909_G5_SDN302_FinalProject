@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useInRouterContext, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Package,
   RefreshCw,
   RotateCcw,
   Search,
   ShoppingBag,
+  SlidersHorizontal,
   Star,
   X,
 } from 'lucide-react';
@@ -30,9 +33,7 @@ const formatCurrency = (val) =>
     maximumFractionDigits: 0,
   });
 
-const ProductsPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-
+const ProductsPageContent = ({ searchParams, setSearchParams }) => {
   // Read URL query parameters
   const urlSearch = searchParams.get('search') || '';
   const urlCategory = searchParams.get('category') || 'Tất cả';
@@ -47,6 +48,7 @@ const ProductsPage = () => {
   const [localMinPrice, setLocalMinPrice] = useState(urlMinPrice);
   const [localMaxPrice, setLocalMaxPrice] = useState(urlMaxPrice);
   const [isDebouncing, setIsDebouncing] = useState(false);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // Catalog state
   const [products, setProducts] = useState([]);
@@ -54,7 +56,7 @@ const ProductsPage = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Sync search input if URL changes externally (e.g. back/forward)
+  // Sync inputs if URL params change externally (e.g. browser back/forward)
   useEffect(() => {
     setSearchInput(urlSearch);
   }, [urlSearch]);
@@ -64,8 +66,8 @@ const ProductsPage = () => {
     setLocalMaxPrice(urlMaxPrice);
   }, [urlMinPrice, urlMaxPrice]);
 
-  // Helper to update search params while preserving existing ones
-  const updateParams = React.useCallback(
+  // Two-way URL Sync helper: strips default/falsy parameters
+  const updateParams = useCallback(
     (newParams) => {
       setSearchParams((prev) => {
         const updated = new URLSearchParams(prev);
@@ -75,8 +77,9 @@ const ProductsPage = () => {
             value === null ||
             value === '' ||
             value === 'Tất cả' ||
-            (key === 'page' && value === 1) ||
-            (key === 'inStock' && value === false)
+            value === 'all' ||
+            (key === 'page' && Number(value) === 1) ||
+            (key === 'inStock' && (value === false || value === 'false'))
           ) {
             updated.delete(key);
           } else {
@@ -146,6 +149,14 @@ const ProductsPage = () => {
     fetchCatalog();
   }, [urlSearch, urlCategory, urlMinPrice, urlMaxPrice, urlInStock, urlSortBy, urlPage]);
 
+  // Smooth scroll back to top of product grid on page change
+  const handlePageChange = (newPage) => {
+    updateParams({ page: newPage });
+    if (typeof window !== 'undefined' && window.scrollTo) {
+      window.scrollTo({ top: 180, behavior: 'smooth' });
+    }
+  };
+
   // Clear search bar
   const handleClearSearch = () => {
     setSearchInput('');
@@ -172,8 +183,102 @@ const ProductsPage = () => {
     setSearchParams(new URLSearchParams());
   };
 
+  // Windowed pagination items
+  const renderPaginationButtons = () => {
+    if (totalPages <= 1) return null;
+
+    let pages = [];
+    if (totalPages <= 7) {
+      pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else if (urlPage <= 4) {
+      pages = [1, 2, 3, 4, 5, '...', totalPages];
+    } else if (urlPage >= totalPages - 3) {
+      pages = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [1, '...', urlPage - 1, urlPage, urlPage + 1, '...', totalPages];
+    }
+
+    return (
+      <nav aria-label="Phân trang sản phẩm" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '40px' }}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => handlePageChange(Math.max(1, urlPage - 1))}
+          disabled={urlPage <= 1}
+          style={{ padding: '8px 14px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+        >
+          <ChevronLeft size={16} />
+          <span>Trước</span>
+        </button>
+
+        {pages.map((pNum, idx) =>
+          pNum === '...' ? (
+            <span key={`ellipsis-${idx}`} style={{ padding: '4px 8px', color: '#94a3b8', fontSize: '13px' }}>
+              …
+            </span>
+          ) : (
+            <button
+              key={pNum}
+              type="button"
+              onClick={() => handlePageChange(pNum)}
+              aria-current={pNum === urlPage ? 'page' : undefined}
+              style={{
+                padding: '8px 14px',
+                fontSize: '13px',
+                borderRadius: '8px',
+                fontWeight: 600,
+                border: pNum === urlPage ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                background: pNum === urlPage ? '#0f172a' : '#ffffff',
+                color: pNum === urlPage ? '#ffffff' : '#334155',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {pNum}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => handlePageChange(Math.min(totalPages, urlPage + 1))}
+          disabled={urlPage >= totalPages}
+          style={{ padding: '8px 14px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+        >
+          <span>Sau</span>
+          <ChevronRight size={16} />
+        </button>
+      </nav>
+    );
+  };
+
+  const hasActiveFilters = Boolean(
+    (urlCategory && urlCategory !== 'Tất cả') ||
+      urlMinPrice ||
+      urlMaxPrice ||
+      urlInStock ||
+      urlSearch ||
+      urlSortBy
+  );
+
   return (
     <div className="products-catalog-page" style={{ background: '#fcfcfd', minHeight: '100vh', padding: '36px 20px 80px' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-filter-btn {
+            display: inline-flex !important;
+          }
+          .catalog-filter-sidebar {
+            display: none;
+          }
+          .catalog-filter-sidebar.is-open {
+            display: block !important;
+            position: static !important;
+            margin-bottom: 24px;
+          }
+        }
+      `}</style>
       <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
         {/* Page Banner Header */}
         <div style={{ marginBottom: '32px' }}>
@@ -188,10 +293,31 @@ const ProductsPage = () => {
           </p>
         </div>
 
+        {/* Mobile Filter Toggle Button */}
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '16px' }}>
+          <button
+            type="button"
+            className="btn-secondary mobile-filter-btn"
+            onClick={() => setIsMobileFilterOpen((prev) => !prev)}
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: 600,
+            }}
+          >
+            <SlidersHorizontal size={15} />
+            <span>{isMobileFilterOpen ? 'Đóng bộ lọc' : 'Bộ lọc'}</span>
+          </button>
+        </div>
+
         {/* 2-Column Catalog Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '32px', alignItems: 'start' }}>
           {/* Left Sidebar Filter Panel */}
           <aside
+            className={`catalog-filter-sidebar ${isMobileFilterOpen ? 'is-open' : ''}`}
             style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',
@@ -221,6 +347,7 @@ const ProductsPage = () => {
                   border: 'none',
                 }}
                 title="Đặt lại toàn bộ bộ lọc"
+                aria-label="Đặt lại toàn bộ bộ lọc"
               >
                 <RotateCcw size={12} /> Đặt lại
               </button>
@@ -238,6 +365,7 @@ const ProductsPage = () => {
                     <button
                       key={cat}
                       type="button"
+                      aria-pressed={isSelected}
                       onClick={() => updateParams({ category: cat === 'Tất cả' ? undefined : cat, page: 1 })}
                       style={{
                         display: 'flex',
@@ -252,7 +380,7 @@ const ProductsPage = () => {
                         border: 'none',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        transition: 'all .15s',
+                        transition: 'all .15s ease',
                       }}
                     >
                       <span>{cat}</span>
@@ -383,6 +511,7 @@ const ProductsPage = () => {
                 <input
                   id="filter-in-stock"
                   type="checkbox"
+                  aria-label="Chỉ hiện sản phẩm còn hàng"
                   checked={urlInStock}
                   onChange={(e) => updateParams({ inStock: e.target.checked, page: 1 })}
                   style={{ width: '16px', height: '16px', cursor: 'pointer' }}
@@ -401,7 +530,7 @@ const ProductsPage = () => {
                 border: '1px solid #e2e8f0',
                 borderRadius: '16px',
                 padding: '16px 20px',
-                marginBottom: '24px',
+                marginBottom: '16px',
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
@@ -485,6 +614,7 @@ const ProductsPage = () => {
                 </label>
                 <select
                   id="catalog-sort"
+                  aria-label="Sắp xếp sản phẩm theo tiêu chí"
                   value={urlSortBy}
                   onChange={(e) => updateParams({ sortBy: e.target.value, page: 1 })}
                   style={{
@@ -506,19 +636,68 @@ const ProductsPage = () => {
               </div>
             </div>
 
-            {/* Active search hint */}
-            {urlSearch && (
-              <div style={{ marginBottom: '16px', fontSize: '14px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>Kết quả tìm kiếm cho: <strong style={{ color: '#0f172a' }}>&ldquo;{urlSearch}&rdquo;</strong> ({total} sản phẩm)</span>
-                <button
-                  type="button"
-                  onClick={handleClearSearch}
-                  style={{ fontSize: '12px', color: '#dc2626', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  Xóa lọc
-                </button>
+            {/* Results Metrics & Active Filter Chips Bar */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '20px', padding: '0 4px' }}>
+              <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
+                Hiển thị <strong style={{ color: '#0f172a' }}>{total === 0 ? 0 : (urlPage - 1) * 12 + 1} - {Math.min(urlPage * 12, total)}</strong> trong <strong style={{ color: '#0f172a' }}>{total}</strong> sản phẩm
               </div>
-            )}
+
+              {hasActiveFilters && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+                  {urlSearch && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#0f172a', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                      <span>Tìm: &ldquo;{urlSearch}&rdquo;</span>
+                      <button type="button" onClick={handleClearSearch} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#64748b' }} aria-label="Xóa lọc tìm kiếm">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {urlCategory && urlCategory !== 'Tất cả' && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#0f172a', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                      <span>Danh mục: {urlCategory}</span>
+                      <button type="button" onClick={() => updateParams({ category: undefined, page: 1 })} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#64748b' }} aria-label={`Xóa lọc danh mục ${urlCategory}`}>
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {(urlMinPrice || urlMaxPrice) && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#0f172a', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                      <span>
+                        Giá: {urlMinPrice ? formatCurrency(urlMinPrice) : '0 ₫'} - {urlMaxPrice ? formatCurrency(urlMaxPrice) : '∞'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocalMinPrice('');
+                          setLocalMaxPrice('');
+                          updateParams({ minPrice: undefined, maxPrice: undefined, page: 1 });
+                        }}
+                        style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#64748b' }}
+                        aria-label="Xóa lọc khoảng giá"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {urlInStock && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#0f172a', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                      <span>Còn hàng</span>
+                      <button type="button" onClick={() => updateParams({ inStock: false, page: 1 })} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#64748b' }} aria-label="Xóa lọc còn hàng">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                  {urlSortBy && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#0f172a', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+                      <span>Sắp xếp: {SORT_OPTIONS.find((o) => o.value === urlSortBy)?.label || urlSortBy}</span>
+                      <button type="button" onClick={() => updateParams({ sortBy: undefined, page: 1 })} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#64748b' }} aria-label="Xóa sắp xếp">
+                        <X size={12} />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Catalog Grid or Empty State */}
             {loading ? (
@@ -554,6 +733,25 @@ const ProductsPage = () => {
                     >
                       <RotateCcw size={14} />
                       <span>Xóa Tất Cả Bộ Lọc</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (urlCategory !== 'Tất cả' || urlMinPrice || urlMaxPrice || urlInStock) ? (
+                <div className="empty-state-box">
+                  <Filter size={48} className="empty-icon" />
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: '8px 0' }}>
+                    Không Có Sản Phẩm Thỏa Điều Kiện
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#64748b', maxWidth: '420px', margin: '0 auto 20px', lineHeight: 1.6 }}>
+                    Không có sản phẩm nào phù hợp với bộ lọc hiện tại. Vui lòng thử điều chỉnh khoảng giá hoặc danh mục khác!
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleResetAll}
+                    >
+                      Xóa Tất Cả Bộ Lọc
                     </button>
                   </div>
                 </div>
@@ -769,60 +967,32 @@ const ProductsPage = () => {
             )}
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '40px',
-                }}
-              >
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => updateParams({ page: Math.max(1, urlPage - 1) })}
-                  disabled={urlPage <= 1}
-                  style={{ padding: '8px 14px', fontSize: '13px' }}
-                >
-                  Trước
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pNum) => (
-                  <button
-                    key={pNum}
-                    type="button"
-                    onClick={() => updateParams({ page: pNum })}
-                    style={{
-                      padding: '8px 14px',
-                      fontSize: '13px',
-                      borderRadius: '8px',
-                      fontWeight: 600,
-                      border: pNum === urlPage ? '1px solid #0f172a' : '1px solid #cbd5e1',
-                      background: pNum === urlPage ? '#0f172a' : '#ffffff',
-                      color: pNum === urlPage ? '#ffffff' : '#334155',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {pNum}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => updateParams({ page: Math.min(totalPages, urlPage + 1) })}
-                  disabled={urlPage >= totalPages}
-                  style={{ padding: '8px 14px', fontSize: '13px' }}
-                >
-                  Sau
-                </button>
-              </div>
-            )}
+            {renderPaginationButtons()}
           </main>
         </div>
       </div>
     </div>
   );
+};
+
+const ProductsPageWithRouter = (props) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  return <ProductsPageContent searchParams={searchParams} setSearchParams={setSearchParams} {...props} />;
+};
+
+const ProductsPageStandalone = (props) => {
+  const [params, setParams] = useState(
+    () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  );
+  return <ProductsPageContent searchParams={params} setSearchParams={setParams} {...props} />;
+};
+
+const ProductsPage = (props) => {
+  const inRouter = useInRouterContext();
+  if (inRouter) {
+    return <ProductsPageWithRouter {...props} />;
+  }
+  return <ProductsPageStandalone {...props} />;
 };
 
 export default ProductsPage;
