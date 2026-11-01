@@ -34,7 +34,9 @@ app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/reviews', require('./src/routes/reviewRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
-app.use('/api/favorites', require('./src/routes/favoriteRoutes'));
+app.use('/api/cart', require('./src/routes/cartRoutes'));
+app.use('/api/wishlist', require('./src/routes/wishlistRoutes'));
+app.use('/api/orders', require('./src/routes/orderRoutes'));
 app.use('/api/admin', require('./src/routes/adminRoutes'));
 app.use('/api/admin/stats', require('./src/routes/statsRoutes'));
 
