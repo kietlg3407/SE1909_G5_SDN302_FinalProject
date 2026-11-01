@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, ShoppingBag, Menu, X, ShieldCheck } from 'lucide-react';
+import { User, LogOut, ShoppingBag, Menu, X, ShieldCheck, Heart } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated, isAdmin, isStaff } = useAuth();
@@ -96,6 +96,10 @@ const Navbar = () => {
                       </Link>
                     )}
 
+                    <Link to="/favorites" className="dropdown-item">
+                      <Heart size={16} color="#ef4444" />
+                      <span>Sản phẩm yêu thích</span>
+                    </Link>
                     <Link to="/profile" className="dropdown-item">
                       <User size={16} />
                       <span>Hồ sơ cá nhân</span>
@@ -109,6 +113,31 @@ const Navbar = () => {
                   </div>
                 )}
               </div>
+
+              {/* Yêu Thích nằm bên phải tài khoản */}
+              <Link
+                to="/favorites"
+                className="header-favorites-btn"
+                title="Danh sách sản phẩm yêu thích"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '999px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                }}
+              >
+                <Heart size={16} fill="#ef4444" color="#ef4444" />
+                <span>Yêu Thích</span>
+              </Link>
             </>
           ) : (
             <div className="auth-btn-group">
@@ -148,6 +177,9 @@ const Navbar = () => {
           )}
           {isAuthenticated ? (
             <>
+              <Link to="/favorites" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Sản Phẩm Yêu Thích
+              </Link>
               <Link to="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                 Hồ Sơ Cá Nhân
               </Link>

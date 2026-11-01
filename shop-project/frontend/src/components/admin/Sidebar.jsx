@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck } from 'lucide-react';
+import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -26,6 +26,18 @@ const navigationItems = [
     label: 'Quản lý sản phẩm',
     path: '/admin/products',
     icon: Package,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Quản lý đánh giá',
+    path: '/admin/reviews',
+    icon: Star,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Quản lý bình luận',
+    path: '/admin/comments',
+    icon: MessageSquare,
     roles: ['admin', 'staff'],
   },
 ];
