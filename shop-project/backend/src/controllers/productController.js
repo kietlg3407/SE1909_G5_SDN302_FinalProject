@@ -127,8 +127,14 @@ const getProducts = async (req, res) => {
       }
     }
 
+    const isNameSort = ['name-asc', 'name_asc', 'name-desc', 'name_desc'].includes(rawSort);
+    let productQuery = Product.find(query).sort(sort);
+    if (isNameSort) {
+      productQuery = productQuery.collation({ locale: 'vi' });
+    }
+
     const [products, total] = await Promise.all([
-      Product.find(query).sort(sort).skip(skip).limit(limit).lean(),
+      productQuery.skip(skip).limit(limit).lean(),
       Product.countDocuments(query),
     ]);
 

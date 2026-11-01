@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-// Chặn người dùng đã đăng nhập (Admin, Staff, Customer) truy cập vào các trang chỉ dành cho khách (Guest) như /login, /register
+// Chặn người dùng đã đăng nhập truy cập vào các trang chỉ dành cho khách (Guest) như /login, /register
 const GuestRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
@@ -22,8 +22,13 @@ const GuestRoute = ({ children }) => {
     );
   }
 
-  // Nếu người dùng đã đăng nhập bất kể vai trò gì -> Chuyển hướng thẳng về trang chủ
+  // Nếu người dùng đã đăng nhập: Phân loại chuyển hướng theo role
+  // - Admin / Staff -> Mặc định chuyển đến /admin/dashboard
+  // - Customer -> Chuyển về trang chủ /
   if (user) {
+    if (user.role === 'admin' || user.role === 'staff') {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

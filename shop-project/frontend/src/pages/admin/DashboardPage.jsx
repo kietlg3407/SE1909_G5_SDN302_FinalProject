@@ -24,6 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 ChartJS.register(
   BarElement,
@@ -85,6 +86,13 @@ const getLocalCurrentMonthString = () => {
 const getLocalCurrentYearString = () => String(new Date().getFullYear());
 
 const DashboardPage = () => {
+  let user = null;
+  try {
+    const auth = useAuth();
+    user = auth?.user;
+  } catch {
+    user = null;
+  }
   const [stats, setStats] = useState(EMPTY_STATS);
   const [trendData, setTrendData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -318,7 +326,26 @@ const DashboardPage = () => {
       <div className="dashboard-shell">
         <header className="dashboard-header">
           <div>
-            <div className="dashboard-eyebrow"><BarChart3 size={15} /> Tổng quan kinh doanh</div>
+            <div className="dashboard-eyebrow">
+              <BarChart3 size={15} /> Tổng quan kinh doanh
+              {user?.role && (
+                <span
+                  style={{
+                    marginLeft: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    background: user.role === 'admin' ? '#ede9fe' : '#e0f2fe',
+                    color: user.role === 'admin' ? '#6d28d9' : '#0369a1',
+                  }}
+                >
+                  {user.role === 'admin' ? 'Quản Trị Viên (Admin)' : 'Nhân Viên (Staff)'}
+                </span>
+              )}
+            </div>
             <h1>Dashboard điều hành</h1>
             <p>Theo dõi sức khỏe hoạt động của cửa hàng từ một nơi.</p>
           </div>
