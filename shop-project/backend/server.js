@@ -27,6 +27,9 @@ app.use('/admin', require('./src/routes/adminViewRoutes'));
 
 // Routes REST API (cho React Frontend)
 app.use('/api/users', require('./src/routes/userRoutes'));
+app.use('/api/favorites', require('./src/routes/favoriteRoutes'));
+app.use('/api', require('./src/routes/reviewRoutes'));
+app.use('/api', require('./src/routes/commentRoutes'));
 app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/products', require('./src/routes/productRoutes'));
 app.use('/api/reviews', require('./src/routes/reviewRoutes'));
