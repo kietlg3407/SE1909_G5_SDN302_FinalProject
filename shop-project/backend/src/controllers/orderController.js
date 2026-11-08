@@ -42,10 +42,8 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Đơn hàng không có sản phẩm nào' });
     }
 
-    // Kiểm tra và khóa/trừ tồn kho
-    const finalOrderItems = [];
-    let itemsPrice = 0;
-
+    // Pass 1: kiểm tra sản phẩm tồn tại & đang kinh doanh
+    const products = [];
     for (const item of orderItemsToProcess) {
       const product = await Product.findById(item.product);
       if (!product || !product.isActive) {
@@ -54,17 +52,35 @@ exports.createOrder = async (req, res) => {
           message: `Sản phẩm không tồn tại hoặc đã ngừng kinh doanh`,
         });
       }
+      products.push(product);
+    }
 
-      if (product.stock < item.quantity) {
+    // Pass 2: trừ kho nguyên tử — tránh oversell khi nhiều đơn đặt đồng thời.
+    // Nếu một item không đủ tồn kho thì hoàn lại phần đã trừ trước đó.
+    const finalOrderItems = [];
+    const decremented = [];
+    let itemsPrice = 0;
+
+    for (let i = 0; i < orderItemsToProcess.length; i++) {
+      const item = orderItemsToProcess[i];
+      const product = await Product.findOneAndUpdate(
+        { _id: item.product, stock: { $gte: item.quantity } },
+        { $inc: { stock: -item.quantity } },
+        { new: true }
+      );
+
+      if (!product) {
+        for (const d of decremented) {
+          await Product.findByIdAndUpdate(d.product, { $inc: { stock: d.quantity } });
+        }
+        const latest = await Product.findById(item.product).select('stock');
         return res.status(400).json({
           success: false,
-          message: `Sản phẩm "${product.name}" chỉ còn ${product.stock} trong kho, không đủ số lượng đặt`,
+          message: `Sản phẩm "${products[i].name}" chỉ còn ${latest ? latest.stock : 0} trong kho, không đủ số lượng đặt`,
         });
       }
 
-      // Giảm tồn kho
-      product.stock -= item.quantity;
-      await product.save();
+      decremented.push({ product: item.product, quantity: item.quantity });
 
       const itemTotal = product.price * item.quantity;
       itemsPrice += itemTotal;

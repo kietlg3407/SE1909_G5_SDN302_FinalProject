@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare } from 'lucide-react';
+import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -38,6 +38,12 @@ const navigationItems = [
     label: 'Quản lý bình luận',
     path: '/admin/comments',
     icon: MessageSquare,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Xử lý đơn hàng',
+    path: '/admin/orders',
+    icon: ClipboardList,
     roles: ['admin', 'staff'],
   },
 ];

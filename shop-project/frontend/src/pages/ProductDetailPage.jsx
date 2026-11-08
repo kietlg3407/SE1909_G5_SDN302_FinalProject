@@ -20,10 +20,14 @@ import {
   Reply,
   HelpCircle,
   X,
+  ShoppingCart,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const formatCurrency = (val) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0);
@@ -33,6 +37,9 @@ const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -163,6 +170,33 @@ const ProductDetailPage = () => {
       }
     }
   }, [id, user, fetchReviews, fetchComments]);
+
+  const inWishlist = isInWishlist(product?._id || id);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+      navigate('/login');
+      return;
+    }
+    setAddingToCart(true);
+    const ok = await addToCart(product._id, quantity);
+    if (ok) setQuantity(1);
+    setAddingToCart(false);
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để lưu sản phẩm yêu thích');
+      navigate('/login');
+      return;
+    }
+    if (inWishlist) {
+      await removeFromWishlist(product._id);
+    } else {
+      await addToWishlist(product._id);
+    }
+  };
 
   const handleToggleFavorite = async () => {
     if (!user) {
@@ -576,6 +610,64 @@ const ProductDetailPage = () => {
               <span>{isFavorite ? 'Đã Yêu Thích' : 'Thêm Vào Yêu Thích'}</span>
             </button>
           </div>
+
+          {/* Purchase Actions: quantity + add to cart + wishlist */}
+          {!isOutOfStock && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '10px', overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  style={{ padding: '10px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  aria-label="Giảm số lượng"
+                >
+                  <Minus size={15} />
+                </button>
+                <span style={{ minWidth: '40px', textAlign: 'center', fontWeight: 700, fontSize: '15px' }}>{quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+                  style={{ padding: '10px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  aria-label="Tăng số lượng"
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '12px 28px', borderRadius: '10px', border: 'none',
+                  background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: '15px',
+                  cursor: addingToCart ? 'not-allowed' : 'pointer',
+                  opacity: addingToCart ? 0.7 : 1,
+                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)',
+                }}
+              >
+                <ShoppingCart size={18} />
+                <span>{addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleToggleWishlist}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '12px 20px', borderRadius: '10px',
+                  border: inWishlist ? '1px solid #fecaca' : '1px solid #cbd5e1',
+                  background: inWishlist ? '#fef2f2' : '#fff',
+                  color: inWishlist ? '#ef4444' : '#334155',
+                  fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+                }}
+              >
+                <Heart size={17} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
+                <span>{inWishlist ? 'Đã lưu Wishlist' : 'Wishlist'}</span>
+              </button>
+            </div>
+          )}
 
           {/* Stock Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600 }}>

@@ -11,12 +11,14 @@ import {
   RotateCcw,
   Search,
   ShoppingBag,
+  ShoppingCart,
   SlidersHorizontal,
   Star,
   X,
 } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const CATEGORIES = ['Tất cả', 'Áo', 'Quần', 'Váy', 'Áo khoác', 'Phụ kiện', 'Giày dép', 'Khác'];
 
@@ -53,7 +55,9 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [addingCartId, setAddingCartId] = useState(null);
 
   // Fetch favorite product IDs if logged in
   useEffect(() => {
@@ -69,6 +73,18 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
       setFavoriteIds(new Set());
     }
   }, [user]);
+
+  const handleAddToCart = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+      return;
+    }
+    setAddingCartId(productId);
+    await addToCart(productId, 1);
+    setAddingCartId(null);
+  };
 
   const handleToggleFavorite = async (e, productId, productName) => {
     e.preventDefault();
@@ -954,6 +970,38 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                             color={favoriteIds.has(id) ? '#ef4444' : '#64748b'}
                           />
                         </button>
+
+                        {/* Quick add to cart button overlay */}
+                        {!isOutOfStock && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleAddToCart(e, id)}
+                            disabled={addingCartId === id}
+                            aria-label="Thêm vào giỏ hàng"
+                            title="Thêm vào giỏ hàng"
+                            style={{
+                              position: 'absolute',
+                              bottom: '10px',
+                              right: '52px',
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '50%',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(4px)',
+                              border: '1px solid #e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: addingCartId === id ? 'not-allowed' : 'pointer',
+                              color: '#15803d',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                              zIndex: 2,
+                              transition: 'transform 0.15s ease',
+                            }}
+                          >
+                            <ShoppingCart size={17} />
+                          </button>
+                        )}
 
                         {/* Out of stock overlay */}
                         {isOutOfStock && (
