@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 
 const validRoles = ['customer', 'staff', 'admin'];
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const getErrorMessage = (error) => {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -18,8 +20,9 @@ const getAllUsers = async (req, res) => {
     const query = {};
 
     // Search by name or email
-    if (search && search.trim()) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+    if (typeof search === 'string' && search.trim()) {
+      const cleanSearch = search.trim().slice(0, 100);
+      const searchRegex = new RegExp(escapeRegex(cleanSearch), 'i');
       query.$or = [{ name: searchRegex }, { email: searchRegex }];
     }
 

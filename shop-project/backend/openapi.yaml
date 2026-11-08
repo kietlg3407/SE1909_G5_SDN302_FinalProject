@@ -1,0 +1,576 @@
+openapi: 3.0.3
+info:
+  title: Shop Quần Áo API - Authentication, User Profile & Address Management
+  version: 1.0.0
+  description: Tài liệu OpenAPI 3.0.3 cho phân hệ Xác thực (Authentication), Hồ sơ cá nhân (User Profile) và Sổ địa chỉ (Address Management).
+servers:
+  - url: http://localhost:5000
+    description: Local Development Server
+  - url: /
+    description: Current Server
+security:
+  - bearerAuth: []
+tags:
+  - name: Authentication
+    description: Đăng ký, Đăng nhập và Đăng xuất
+  - name: User Profile
+    description: Quản lý thông tin cá nhân, mật khẩu và ảnh đại diện
+  - name: Addresses
+    description: Quản lý sổ địa chỉ giao hàng (chỉ dành cho Customer)
+paths:
+  /api/users/register:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng ký tài khoản mới
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Nguyễn Văn A
+                email:
+                  type: string
+                  format: email
+                  example: newuser@shop.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: password123
+      responses:
+        '201':
+          description: Đăng ký tài khoản thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Dữ liệu đầu vào không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email này đã được sử dụng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/login:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng nhập và nhận JWT Token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: customer@shop.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Thiếu email hoặc mật khẩu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Email hoặc mật khẩu không chính xác
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Tài khoản đã bị khóa hoặc ngừng hoạt động
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng xuất và xóa cookie admin_token
+      security: []
+      responses:
+        '200':
+          description: Đăng xuất thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Đăng xuất thành công
+
+  /api/users/profile:
+    get:
+      tags:
+        - User Profile
+      summary: Lấy thông tin cá nhân hiện tại
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Thông tin hồ sơ người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Không tìm thấy người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - User Profile
+      summary: Cập nhật thông tin hồ sơ cá nhân (họ tên)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: Nguyễn Văn B
+      responses:
+        '200':
+          description: Cập nhật hồ sơ thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Họ tên không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/change-password:
+    put:
+      tags:
+        - User Profile
+      summary: Đổi mật khẩu và vô hiệu hóa token cũ
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  example: password123
+                newPassword:
+                  type: string
+                  minLength: 6
+                  example: newpassword123
+      responses:
+        '200':
+          description: Đổi mật khẩu thành công, trả về token mới
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Đổi mật khẩu thành công
+                  token:
+                    type: string
+        '400':
+          description: Mật khẩu hiện tại sai hoặc mật khẩu mới không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/upload-avatar:
+    post:
+      tags:
+        - User Profile
+      summary: Tải lên ảnh đại diện (tối đa 2MB, chỉ nhận JPEG/PNG/WEBP)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - avatar
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: Tệp ảnh đại diện (image/jpeg, image/png, image/webp, tối đa 2MB)
+      responses:
+        '200':
+          description: Cập nhật ảnh đại diện thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cập nhật ảnh đại diện thành công
+                  avatarUrl:
+                    type: string
+                    example: https://res.cloudinary.com/demo/image/upload/avatar.jpg
+        '400':
+          description: Thiếu tệp hoặc sai định dạng ảnh
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Tài khoản bị khóa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Kích thước tệp vượt quá 2MB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/addresses:
+    get:
+      tags:
+        - Addresses
+      summary: Lấy danh sách địa chỉ nhận hàng của khách hàng
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Danh sách địa chỉ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+        '403':
+          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+    post:
+      tags:
+        - Addresses
+      summary: Thêm địa chỉ giao hàng mới
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '201':
+          description: Thêm địa chỉ thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '400':
+          description: Dữ liệu địa chỉ không hợp lệ
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+        '403':
+          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+
+  /api/users/addresses/{addressId}:
+    put:
+      tags:
+        - Addresses
+      summary: Cập nhật địa chỉ giao hàng theo ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ObjectId của địa chỉ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInput'
+      responses:
+        '200':
+          description: Cập nhật địa chỉ thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '400':
+          description: ID địa chỉ hoặc dữ liệu không hợp lệ
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+        '403':
+          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+        '404':
+          description: Không tìm thấy địa chỉ
+    delete:
+      tags:
+        - Addresses
+      summary: Xóa địa chỉ giao hàng theo ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ObjectId của địa chỉ
+      responses:
+        '200':
+          description: Xóa địa chỉ thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '400':
+          description: ID địa chỉ không hợp lệ
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+        '403':
+          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+        '404':
+          description: Không tìm thấy địa chỉ để xóa
+
+  /api/users/addresses/{addressId}/default:
+    put:
+      tags:
+        - Addresses
+      summary: Đặt địa chỉ làm mặc định
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ObjectId của địa chỉ
+      responses:
+        '200':
+          description: Đặt địa chỉ mặc định thành công
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+        '400':
+          description: ID địa chỉ không hợp lệ
+        '401':
+          description: Chưa đăng nhập hoặc token không hợp lệ
+        '403':
+          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+        '404':
+          description: Không tìm thấy địa chỉ
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Address:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: 660000000000000000000001
+        street:
+          type: string
+          example: 123 Nguyễn Văn Cừ
+        city:
+          type: string
+          example: Phường An Khánh
+        state:
+          type: string
+          example: Ninh Kiều, Cần Thơ
+        phone:
+          type: string
+          example: '0912345678'
+        isDefault:
+          type: boolean
+          example: true
+    AddressInput:
+      type: object
+      required:
+        - street
+        - city
+        - state
+        - phone
+      properties:
+        street:
+          type: string
+          example: 123 Nguyễn Văn Cừ
+        city:
+          type: string
+          example: Phường An Khánh
+        state:
+          type: string
+          example: Ninh Kiều, Cần Thơ
+        phone:
+          type: string
+          example: '0912345678'
+        isDefault:
+          type: boolean
+          example: false
+    UserProfile:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+            - customer
+            - staff
+            - admin
+        isActive:
+          type: boolean
+        avatar:
+          type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+    AuthResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserProfile'
+        - type: object
+          properties:
+            token:
+              type: string
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Thông báo lỗi chi tiết
+

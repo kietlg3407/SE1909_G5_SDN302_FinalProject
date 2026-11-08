@@ -66,6 +66,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(async (showToast = true) => {
+    try {
+      await api.post('/api/users/logout');
+    } catch (error) {
+      // Bỏ qua lỗi mạng khi gọi logout, vẫn tiếp tục xóa localStorage
+    }
     clearAuth();
     if (showToast) toast.success('Đã đăng xuất thành công');
     return { success: true };
@@ -189,6 +194,12 @@ export const AuthProvider = ({ children }) => {
         currentPassword,
         newPassword,
       });
+      if (response.data?.token) {
+        const currentUser = user || readStoredUser();
+        if (currentUser) {
+          applyAuth(currentUser, response.data.token);
+        }
+      }
       toast.success(response.data.message || 'Đổi mật khẩu thành công');
       return { success: true };
     } catch (error) {
@@ -198,7 +209,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setActionLoading(false);
     }
-  }, []);
+  }, [applyAuth, user]);
 
   const refreshUser = useCallback(async () => {
     try {
