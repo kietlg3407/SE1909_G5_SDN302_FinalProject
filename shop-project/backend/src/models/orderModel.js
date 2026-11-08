@@ -10,6 +10,8 @@ const orderItemSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   quantity: { type: Number, required: true, min: 1 },
   image: { type: String, default: '' },
+  variant: { type: mongoose.Schema.Types.ObjectId, default: null },
+  variantLabel: { type: String, default: '' },
 });
 
 const statusHistorySchema = new mongoose.Schema({

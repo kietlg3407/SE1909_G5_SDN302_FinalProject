@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, ShoppingBag, Trash2, ArrowRight } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
@@ -11,6 +11,21 @@ const formatCurrency = (amount) =>
 
 const WishlistPage = () => {
   const { wishlist, wishlistCount, loadingWishlist, removeFromWishlist, moveToCart } = useCart();
+  const [variantSelections, setVariantSelections] = useState({});
+
+  const getActiveVariants = (product) =>
+    (product.variants || []).filter((v) => v.isActive !== false);
+
+  const getSelectedVariant = (product) => {
+    const variants = getActiveVariants(product);
+    if (variants.length === 0) return null;
+    return variants.find((v) => v._id === variantSelections[product._id]) || variants[0];
+  };
+
+  const getVariantStock = (product) => {
+    const variant = getSelectedVariant(product);
+    return variant ? variant.stock : product.stock;
+  };
 
   if (loadingWishlist) {
     return (
@@ -48,7 +63,10 @@ const WishlistPage = () => {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '24px' }}>
         {wishlist.map((product) => {
-          const isOutOfStock = product.stock <= 0;
+          const variants = getActiveVariants(product);
+          const selectedVariant = getSelectedVariant(product);
+          const stock = getVariantStock(product);
+          const isOutOfStock = stock <= 0;
           return (
             <div
               key={product._id}
@@ -92,11 +110,30 @@ const WishlistPage = () => {
                   )}
                 </div>
 
+                {/* Variant selector */}
+                {variants.length > 0 && (
+                  <select
+                    value={selectedVariant?._id || ''}
+                    onChange={(e) =>
+                      setVariantSelections((prev) => ({ ...prev, [product._id]: e.target.value }))
+                    }
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', marginBottom: '10px', background: '#fff' }}
+                  >
+                    {variants.map((v) => (
+                      <option key={v._id} value={v._id}>
+                        {[v.size, v.color].filter(Boolean).join(' / ') || v.sku || 'Phân loại'}
+                        {v.price != null ? ` — ${formatCurrency(v.price)}` : ''}
+                        {v.stock <= 0 ? ' (Hết hàng)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 <div style={{ marginTop: 'auto' }}>
                   <button
                     type="button"
                     disabled={isOutOfStock}
-                    onClick={() => moveToCart(product._id, 1)}
+                    onClick={() => moveToCart(product._id, 1, variants.length > 0 ? selectedVariant?._id : null)}
                     className="btn-primary"
                     style={{ width: '100%', padding: '10px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: isOutOfStock ? 0.5 : 1, cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
                   >

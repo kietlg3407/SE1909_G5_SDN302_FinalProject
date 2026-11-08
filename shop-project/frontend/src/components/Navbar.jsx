@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { User, LogOut, ShoppingBag, Menu, X, ShieldCheck, Heart } from 'lucide-react';
+import { useCart } from '../contexts/CartContext';
+import { User, LogOut, ShoppingBag, ShoppingCart, Menu, X, ShieldCheck, Heart, ClipboardList } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated, isAdmin, isStaff } = useAuth();
+  const { cartCount, wishlistCount } = useCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -96,6 +98,18 @@ const Navbar = () => {
                       </Link>
                     )}
 
+                    <Link to="/cart" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      <ShoppingCart size={16} />
+                      <span>Giỏ hàng ({cartCount})</span>
+                    </Link>
+                    <Link to="/wishlist" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      <Heart size={16} color="#ef4444" />
+                      <span>Wishlist ({wishlistCount})</span>
+                    </Link>
+                    <Link to="/orders" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      <ClipboardList size={16} />
+                      <span>Đơn hàng của tôi</span>
+                    </Link>
                     <Link to="/favorites" className="dropdown-item">
                       <Heart size={16} color="#ef4444" />
                       <span>Sản phẩm yêu thích</span>
@@ -114,11 +128,40 @@ const Navbar = () => {
                 )}
               </div>
 
-              {/* Yêu Thích nằm bên phải tài khoản */}
+              {/* Giỏ hàng */}
               <Link
-                to="/favorites"
+                to="/cart"
                 className="header-favorites-btn"
-                title="Danh sách sản phẩm yêu thích"
+                title="Giỏ hàng"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  borderRadius: '999px',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  color: '#15803d',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  textDecoration: 'none',
+                  position: 'relative',
+                }}
+              >
+                <ShoppingCart size={16} />
+                <span>Giỏ Hàng</span>
+                {cartCount > 0 && (
+                  <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 700, minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Wishlist */}
+              <Link
+                to="/wishlist"
+                className="header-favorites-btn"
+                title="Danh sách yêu thích"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -131,13 +174,18 @@ const Navbar = () => {
                   fontWeight: 600,
                   fontSize: '13px',
                   textDecoration: 'none',
-                  transition: 'all 0.2s ease',
-                  cursor: 'pointer',
+                  position: 'relative',
                 }}
               >
                 <Heart size={16} fill="#ef4444" color="#ef4444" />
                 <span>Yêu Thích</span>
+                {wishlistCount > 0 && (
+                  <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 700, minWidth: '18px', height: '18px', borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                    {wishlistCount > 99 ? '99+' : wishlistCount}
+                  </span>
+                )}
               </Link>
+
             </>
           ) : (
             <div className="auth-btn-group">
@@ -177,6 +225,15 @@ const Navbar = () => {
           )}
           {isAuthenticated ? (
             <>
+              <Link to="/cart" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Giỏ Hàng ({cartCount})
+              </Link>
+              <Link to="/wishlist" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Wishlist ({wishlistCount})
+              </Link>
+              <Link to="/orders" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Đơn Hàng Của Tôi
+              </Link>
               <Link to="/favorites" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                 Sản Phẩm Yêu Thích
               </Link>

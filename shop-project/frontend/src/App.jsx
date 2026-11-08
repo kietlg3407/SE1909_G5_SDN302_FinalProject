@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { CartProvider } from './contexts/CartContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -21,6 +22,12 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminCommentsPage from './pages/admin/AdminCommentsPage';
 import FavoritesPage from './pages/FavoritesPage';
+import CartPage from './pages/CartPage';
+import WishlistPage from './pages/WishlistPage';
+import CheckoutPage from './pages/CheckoutPage';
+import MyOrdersPage from './pages/MyOrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import './index.css';
 
 const NotFound = () => (
@@ -59,6 +66,7 @@ const AdminLayout = () => (
 function App() {
   return (
     <AuthProvider>
+      <CartProvider>
       <Router>
         <Toaster
           position="top-right"
@@ -104,6 +112,46 @@ function App() {
               }
             />
             <Route
+              path="/cart"
+              element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/wishlist"
+              element={
+                <ProtectedRoute>
+                  <WishlistPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <MyOrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/:id"
+              element={
+                <ProtectedRoute>
+                  <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/profile"
               element={
                 <ProtectedRoute>
@@ -123,6 +171,7 @@ function App() {
               <Route path="reviews" element={<AdminReviewsPage />} />
               <Route path="comments" element={<AdminCommentsPage />} />
               <Route path="coupons" element={<CouponsPage />} />
+              <Route path="orders" element={<AdminOrdersPage />} />
               {/* Trang Quản lý Người dùng: Chỉ cho phép Quản trị viên (Admin) */}
               <Route
                 path="users"
@@ -138,6 +187,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

@@ -6,6 +6,14 @@ const cartItemSchema = new mongoose.Schema({
     ref: 'Product',
     required: true,
   },
+  variant: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
+  },
+  variantLabel: {
+    type: String,
+    default: '',
+  },
   quantity: {
     type: Number,
     required: true,
