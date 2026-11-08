@@ -37,6 +37,8 @@ app.use('/api', require('./src/routes/reviewRoutes'));
 app.use('/api', require('./src/routes/commentRoutes'));
 app.use('/api/coupons', require('./src/routes/couponRoutes'));
 app.use('/api/products', require('./src/routes/productRoutes'));
+app.use('/api/categories', require('./src/routes/categoryRoutes'));
+app.use('/api/brands', require('./src/routes/brandRoutes'));
 app.use('/api/reviews', require('./src/routes/reviewRoutes'));
 app.use('/api/comments', require('./src/routes/commentRoutes'));
 app.use('/api/cart', require('./src/routes/cartRoutes'));

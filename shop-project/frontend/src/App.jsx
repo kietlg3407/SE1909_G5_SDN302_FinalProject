@@ -17,6 +17,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import CouponsPage from './pages/admin/CouponsPage';
 import ProductsPage from './pages/ProductsPage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
+import AdminClassificationsPage from './pages/admin/AdminClassificationsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import AdminCommentsPage from './pages/admin/AdminCommentsPage';
@@ -166,6 +167,7 @@ function App() {
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="products" element={<AdminProductsPage />} />
+              <Route path="classifications" element={<AdminClassificationsPage />} />
               <Route path="reviews" element={<AdminReviewsPage />} />
               <Route path="comments" element={<AdminCommentsPage />} />
               <Route path="coupons" element={<CouponsPage />} />
