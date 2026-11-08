@@ -348,6 +348,9 @@ const AdminOrdersPage = () => {
                               />
                               <div style={{ flex: 1, minWidth: 0, fontSize: '13px' }}>
                                 <div style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                                {item.variantLabel && (
+                                  <div style={{ color: '#7c3aed', fontSize: '12px', fontWeight: 600 }}>Phân loại: {item.variantLabel}</div>
+                                )}
                                 <div style={{ color: '#64748b', fontSize: '12px' }}>{formatCurrency(item.price)} x {item.quantity}</div>
                               </div>
                               <div style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>{formatCurrency(item.price * item.quantity)}</div>

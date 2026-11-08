@@ -850,6 +850,7 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
                     : 0;
                   const isOutOfStock = product.stock <= 0;
+                  const hasVariants = (product.variants || []).some((v) => v.isActive !== false);
 
                   const thumbnail = Array.isArray(product.images) && product.images.length > 0
                     ? product.images[0]
@@ -971,8 +972,8 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                           />
                         </button>
 
-                        {/* Quick add to cart button overlay */}
-                        {!isOutOfStock && (
+                        {/* Quick add to cart button overlay (ẩn với SP có phân loại — vào trang chi tiết để chọn) */}
+                        {!isOutOfStock && !hasVariants && (
                           <button
                             type="button"
                             onClick={(e) => handleAddToCart(e, id)}

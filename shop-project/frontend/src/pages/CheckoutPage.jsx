@@ -359,7 +359,7 @@ const CheckoutPage = () => {
 
           <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
             {cart.items.map((item) => (
-              <div key={item.product?._id || item._id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+              <div key={`${item.product?._id || item._id}-${item.variant || 'base'}`} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
                 <img
                   src={item.product?.images?.[0] || 'https://placehold.co/80x100?text=Item'}
                   alt={item.product?.name}
@@ -369,6 +369,11 @@ const CheckoutPage = () => {
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {item.product?.name}
                   </p>
+                  {item.variantLabel && (
+                    <p style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, margin: 0 }}>
+                      Phân loại: {item.variantLabel}
+                    </p>
+                  )}
                   <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
                     {formatCurrency(item.product?.price || item.price)} x {item.quantity}
                   </p>

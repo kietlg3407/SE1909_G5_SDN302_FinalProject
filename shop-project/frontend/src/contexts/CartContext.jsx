@@ -65,13 +65,13 @@ export const CartProvider = ({ children }) => {
   }, [fetchCart, fetchWishlist]);
 
   // 3. Add to Cart
-  const addToCart = async (productId, quantity = 1) => {
+  const addToCart = async (productId, quantity = 1, variantId = null) => {
     if (!isAuthenticated) {
       toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
       return false;
     }
     try {
-      const res = await api.post('/api/cart', { productId, quantity });
+      const res = await api.post('/api/cart', { productId, quantity, variantId });
       if (res.data?.success) {
         setCart(res.data.cart);
         setCartCount(res.data.totalItems);
@@ -86,9 +86,9 @@ export const CartProvider = ({ children }) => {
   };
 
   // 4. Update Cart Item Quantity
-  const updateQuantity = async (productId, quantity) => {
+  const updateQuantity = async (productId, quantity, variantId = null) => {
     try {
-      const res = await api.put(`/api/cart/${productId}`, { quantity });
+      const res = await api.put(`/api/cart/${productId}`, { quantity, variantId });
       if (res.data?.success) {
         setCart(res.data.cart);
         setCartCount(res.data.totalItems);
@@ -102,9 +102,11 @@ export const CartProvider = ({ children }) => {
   };
 
   // 5. Remove from Cart
-  const removeFromCart = async (productId) => {
+  const removeFromCart = async (productId, variantId = null) => {
     try {
-      const res = await api.delete(`/api/cart/${productId}`);
+      const res = await api.delete(`/api/cart/${productId}`, {
+        params: variantId ? { variantId } : {},
+      });
       if (res.data?.success) {
         setCart(res.data.cart);
         setCartCount(res.data.totalItems);
@@ -180,9 +182,9 @@ export const CartProvider = ({ children }) => {
   };
 
   // 10. Move to Cart
-  const moveToCart = async (productId, quantity = 1) => {
+  const moveToCart = async (productId, quantity = 1, variantId = null) => {
     try {
-      const res = await api.post('/api/wishlist/move-to-cart', { productId, quantity });
+      const res = await api.post('/api/wishlist/move-to-cart', { productId, quantity, variantId });
       if (res.data?.success) {
         toast.success('Đã chuyển sản phẩm vào giỏ hàng');
         fetchCart();

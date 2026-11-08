@@ -182,7 +182,8 @@ const ProductDetailPage = () => {
       return;
     }
     setAddingToCart(true);
-    const ok = await addToCart(product._id, quantity);
+    const variantId = hasVariants ? selectedVariant?._id || null : null;
+    const ok = await addToCart(product._id, quantity, variantId);
     if (ok) setQuantity(1);
     setAddingToCart(false);
   };

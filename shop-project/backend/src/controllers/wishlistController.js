@@ -7,7 +7,7 @@ exports.getWishlist = async (req, res) => {
   try {
     let wishlist = await Wishlist.findOne({ user: req.user._id }).populate({
       path: 'products',
-      select: 'name price originalPrice images stock category isActive',
+      select: 'name price originalPrice images stock category isActive variants',
     });
 
     if (!wishlist) {
@@ -61,7 +61,7 @@ exports.addToWishlist = async (req, res) => {
 
     wishlist = await wishlist.populate({
       path: 'products',
-      select: 'name price originalPrice images stock category isActive',
+      select: 'name price originalPrice images stock category isActive variants',
     });
 
     res.status(200).json({
@@ -89,7 +89,7 @@ exports.removeFromWishlist = async (req, res) => {
       await wishlist.save();
       wishlist = await wishlist.populate({
         path: 'products',
-        select: 'name price originalPrice images stock category isActive',
+        select: 'name price originalPrice images stock category isActive variants',
       });
     }
 
@@ -107,7 +107,7 @@ exports.removeFromWishlist = async (req, res) => {
 // POST /api/wishlist/move-to-cart
 exports.moveToCart = async (req, res) => {
   try {
-    const { productId, quantity = 1 } = req.body;
+    const { productId, quantity = 1, variantId } = req.body;
     const qty = parseInt(quantity, 10) || 1;
 
     const product = await Product.findById(productId);
@@ -115,10 +115,25 @@ exports.moveToCart = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Sản phẩm không tồn tại' });
     }
 
-    if (product.stock < qty) {
+    // Resolve variant
+    let variant = null;
+    const activeVariants = (product.variants || []).filter((v) => v.isActive !== false);
+    if (variantId) {
+      variant = product.variants.id(variantId);
+      if (!variant || variant.isActive === false) {
+        return res.status(400).json({ success: false, message: 'Phân loại sản phẩm không tồn tại' });
+      }
+    } else if (activeVariants.length > 0) {
+      return res.status(400).json({ success: false, message: 'Sản phẩm có phân loại, vui lòng chọn phân loại' });
+    }
+
+    const availableStock = variant ? variant.stock : product.stock;
+    const unitPrice = variant && variant.price != null ? variant.price : product.price;
+
+    if (availableStock < qty) {
       return res.status(400).json({
         success: false,
-        message: `Sản phẩm chỉ còn ${product.stock} trong kho`,
+        message: `Sản phẩm chỉ còn ${availableStock} trong kho`,
       });
     }
 
@@ -128,20 +143,30 @@ exports.moveToCart = async (req, res) => {
       cart = new Cart({ user: req.user._id, items: [] });
     }
 
+    const variantKey = variant ? variant._id.toString() : null;
+    const variantLabel = variant
+      ? [variant.size, variant.color].filter(Boolean).join(' / ') || variant.sku || 'Phân loại'
+      : '';
+
     const itemIndex = cart.items.findIndex(
-      (item) => item.product.toString() === productId.toString()
+      (item) =>
+        item.product.toString() === productId.toString() &&
+        (item.variant ? item.variant.toString() : null) === variantKey
     );
 
     if (itemIndex > -1) {
       cart.items[itemIndex].quantity = Math.min(
         cart.items[itemIndex].quantity + qty,
-        product.stock
+        availableStock
       );
+      cart.items[itemIndex].price = unitPrice;
     } else {
       cart.items.push({
         product: product._id,
+        variant: variant ? variant._id : null,
+        variantLabel,
         quantity: qty,
-        price: product.price,
+        price: unitPrice,
       });
     }
     await cart.save();

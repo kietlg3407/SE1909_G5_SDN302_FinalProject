@@ -166,6 +166,11 @@ const MyOrdersPage = () => {
                         <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {item.name}
                         </div>
+                        {item.variantLabel && (
+                          <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>
+                            Phân loại: {item.variantLabel}
+                          </div>
+                        )}
                         <div style={{ fontSize: '12px', color: '#64748b' }}>
                           Số lượng: {item.quantity} x {formatCurrency(item.price)}
                         </div>

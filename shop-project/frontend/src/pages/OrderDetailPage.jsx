@@ -146,6 +146,9 @@ const OrderDetailPage = () => {
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>{item.name}</div>
+                    {item.variantLabel && (
+                      <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>Phân loại: {item.variantLabel}</div>
+                    )}
                     <div style={{ fontSize: '12px', color: '#64748b' }}>
                       {formatCurrency(item.price)} x {item.quantity}
                     </div>
