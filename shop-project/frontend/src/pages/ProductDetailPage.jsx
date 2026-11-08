@@ -35,6 +35,7 @@ const ProductDetailPage = () => {
   const { user } = useAuth();
 
   const [product, setProduct] = useState(null);
+  const [selectedVariantId, setSelectedVariantId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeImage, setActiveImage] = useState('');
@@ -92,6 +93,7 @@ const ProductDetailPage = () => {
         const res = await api.get(`/api/products/${id}`);
         if (isMounted && res.data?.product) {
           setProduct(res.data.product);
+          setSelectedVariantId(res.data.product.variants?.find((variant) => variant.isActive !== false)?._id || '');
           const imgs = res.data.product.images;
           if (Array.isArray(imgs) && imgs.length > 0) {
             setActiveImage(imgs[0]);
@@ -407,10 +409,15 @@ const ProductDetailPage = () => {
     );
   }
 
-  const isOutOfStock = product.stock <= 0;
-  const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+  const hasVariants = (product.variants || []).length > 0;
+  const activeVariants = (product.variants || []).filter((variant) => variant.isActive !== false);
+  const selectedVariant = activeVariants.find((variant) => variant._id === selectedVariantId) || activeVariants[0];
+  const displayPrice = selectedVariant?.price ?? product.price;
+  const displayStock = hasVariants ? (selectedVariant?.stock ?? 0) : product.stock;
+  const isOutOfStock = displayStock <= 0;
+  const hasDiscount = product.originalPrice && product.originalPrice > displayPrice;
   const discountPercent = hasDiscount
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    ? Math.round(((product.originalPrice - displayPrice) / product.originalPrice) * 100)
     : 0;
 
   return (
@@ -543,7 +550,7 @@ const ProductDetailPage = () => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
               <span style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a' }}>
-                {formatCurrency(product.price)}
+                {formatCurrency(displayPrice)}
               </span>
               {hasDiscount && (
                 <span style={{ fontSize: '18px', color: '#94a3b8', textDecoration: 'line-through' }}>
@@ -577,6 +584,25 @@ const ProductDetailPage = () => {
             </button>
           </div>
 
+          {activeVariants.length > 0 && (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <label htmlFor="product-variant" style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>Tùy chọn sản phẩm</label>
+              <select
+                id="product-variant"
+                value={selectedVariant?._id || ''}
+                onChange={(event) => setSelectedVariantId(event.target.value)}
+                style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff' }}
+              >
+                {activeVariants.map((variant) => (
+                  <option key={variant._id} value={variant._id}>
+                    {[variant.size, variant.color].filter(Boolean).join(' / ')}
+                    {variant.sku ? ` • ${variant.sku}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Stock Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600 }}>
             {isOutOfStock ? (
@@ -587,7 +613,7 @@ const ProductDetailPage = () => {
             ) : (
               <span style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <CheckCircle size={16} color="#16a34a" />
-                Còn hàng ({product.stock} sản phẩm sẵn có)
+                Còn hàng ({displayStock} sản phẩm sẵn có)
               </span>
             )}
           </div>
