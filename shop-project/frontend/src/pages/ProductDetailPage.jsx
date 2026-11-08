@@ -633,7 +633,7 @@ const ProductDetailPage = () => {
                 <span style={{ minWidth: '40px', textAlign: 'center', fontWeight: 700, fontSize: '15px' }}>{quantity}</span>
                 <button
                   type="button"
-                  onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
+                  onClick={() => setQuantity((q) => Math.min(displayStock || 99, q + 1))}
                   style={{ padding: '10px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   aria-label="Tăng số lượng"
                 >
@@ -673,6 +673,9 @@ const ProductDetailPage = () => {
                 <Heart size={17} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
                 <span>{inWishlist ? 'Đã lưu Wishlist' : 'Wishlist'}</span>
               </button>
+            </div>
+          )}
+
           {activeVariants.length > 0 && (
             <div style={{ display: 'grid', gap: 8 }}>
               <label htmlFor="product-variant" style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>Tùy chọn sản phẩm</label>

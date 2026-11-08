@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare, ClipboardList } from 'lucide-react';
-import { BarChart3, Boxes, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare } from 'lucide-react';
+import { BarChart3, Boxes, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
