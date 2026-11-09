@@ -7,8 +7,10 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImages,
 } = require('../controllers/productController');
 const { protect, isStaffOrAdmin } = require('../middlewares/authMiddleware');
+const upload = require('../middlewares/uploadMiddleware');
 
 const router = express.Router();
 
@@ -25,6 +27,9 @@ const optionalAuth = async (req, res, next) => {
   }
   next();
 };
+
+// Endpoint tải lên file ảnh từ máy tính (Admin & Staff)
+router.post('/upload', protect, isStaffOrAdmin, upload.array('images', 10), uploadProductImages);
 
 router.get('/', optionalAuth, getProducts);
 router.get('/:id', getProductById);

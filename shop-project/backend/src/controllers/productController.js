@@ -271,10 +271,40 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+/**
+ * @desc Tải lên file ảnh sản phẩm từ máy tính
+ * @route POST /api/products/upload
+ * @access Private (Admin & Staff)
+ */
+const uploadProductImages = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      if (req.file) {
+        return res.json({
+          success: true,
+          urls: [`/uploads/${req.file.filename}`],
+          url: `/uploads/${req.file.filename}`,
+        });
+      }
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ít nhất 1 file hình ảnh' });
+    }
+
+    const urls = req.files.map((file) => `/uploads/${file.filename}`);
+    res.json({
+      success: true,
+      message: `Đã tải lên ${urls.length} ảnh thành công`,
+      urls,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tải ảnh lên', error: error.message });
+  }
+};
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  uploadProductImages,
 };
