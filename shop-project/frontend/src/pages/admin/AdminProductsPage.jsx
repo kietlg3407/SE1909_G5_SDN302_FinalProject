@@ -1,3 +1,4 @@
+// Member 2: Product Management - Local Image Upload & Admin Modal
 import React, { useCallback, useEffect, useState } from 'react';
 import { useInRouterContext, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
