@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Star,
@@ -56,6 +56,12 @@ const ProductDetailPage = () => {
   const [reviews, setReviews] = useState([]);
   const [reviewStats, setReviewStats] = useState({ total: 0, average: 5, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } });
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [selectedRatingFilter, setSelectedRatingFilter] = useState('all');
+
+  const filteredReviews = useMemo(() => {
+    if (selectedRatingFilter === 'all') return reviews;
+    return reviews.filter((r) => Number(r.rating) === Number(selectedRatingFilter));
+  }, [reviews, selectedRatingFilter]);
 
   // Review form state
   const [rating, setRating] = useState(5);
@@ -63,6 +69,7 @@ const ProductDetailPage = () => {
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [isEditingReview, setIsEditingReview] = useState(false);
+  const [reviewEligibility, setReviewEligibility] = useState({ checked: false, canReview: false, reason: '' });
 
   // Comments state (Hỏi đáp & Thảo luận)
   const [comments, setComments] = useState([]);
@@ -89,6 +96,37 @@ const ProductDetailPage = () => {
         (r.user && String(r.user) === String(user._id)) ||
         (r.user?.email && r.user.email === user.email))
   );
+
+  // Check if current user is eligible to review (must have purchased & order Delivered)
+  useEffect(() => {
+    let isMounted = true;
+    if (!user || user.role !== 'customer' || !id) {
+      setReviewEligibility({ checked: true, canReview: false, reason: '' });
+      return;
+    }
+
+    const checkEligibility = async () => {
+      try {
+        const res = await api.get(`/api/reviews/product/${id}/eligibility`);
+        if (isMounted && res.data?.success) {
+          setReviewEligibility({
+            checked: true,
+            canReview: !!res.data.canReview,
+            reason: res.data.reason || '',
+          });
+        }
+      } catch (err) {
+        if (isMounted) {
+          setReviewEligibility({ checked: true, canReview: false, reason: '' });
+        }
+      }
+    };
+
+    checkEligibility();
+    return () => {
+      isMounted = false;
+    };
+  }, [id, user]);
 
   // Fetch product detail
   useEffect(() => {
@@ -805,7 +843,7 @@ const ProductDetailPage = () => {
               {/* Average Score */}
               <div style={{ textAlign: 'center', borderRight: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '54px', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>
-                  {reviewStats.average.toFixed(1)}
+                  {(reviewStats?.average ?? 5).toFixed(1)}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', margin: '12px 0 6px' }}>
                   {[1, 2, 3, 4, 5].map((s) => (
@@ -825,10 +863,30 @@ const ProductDetailPage = () => {
               {/* Star Progress Bars */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[5, 4, 3, 2, 1].map((num) => {
-                  const count = reviewStats.breakdown[num] || 0;
+                  const count = reviewStats?.breakdown?.[num] || 0;
                   const percent = reviewStats.total > 0 ? Math.round((count / reviewStats.total) * 100) : 0;
+                  const isSelected = selectedRatingFilter === num;
                   return (
-                    <div key={num} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setSelectedRatingFilter((prev) => (prev === num ? 'all' : num))}
+                      title={`Lọc xem các đánh giá ${num} sao`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '13px',
+                        background: isSelected ? '#fef3c7' : 'transparent',
+                        border: isSelected ? '1px solid #f59e0b' : '1px solid transparent',
+                        borderRadius: '6px',
+                        padding: '3px 8px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s ease',
+                        width: '100%',
+                      }}
+                    >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '50px' }}>
                         <span style={{ fontWeight: 600 }}>{num}</span>
                         <Star size={13} fill="#f59e0b" color="#f59e0b" />
@@ -844,10 +902,10 @@ const ProductDetailPage = () => {
                           }}
                         />
                       </div>
-                      <span style={{ width: '40px', textAlign: 'right', color: '#64748b', fontSize: '12px' }}>
+                      <span style={{ width: '40px', textAlign: 'right', color: isSelected ? '#b45309' : '#64748b', fontSize: '12px', fontWeight: isSelected ? 700 : 400 }}>
                         {count}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -933,6 +991,16 @@ const ProductDetailPage = () => {
                       <Edit3 size={14} /> Chỉnh Sửa Đánh Giá
                     </button>
                   </div>
+                </div>
+              ) : !myExistingReview && !isEditingReview && reviewEligibility.checked && !reviewEligibility.canReview ? (
+                <div style={{ textAlign: 'center', padding: '28px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <Package size={40} color="#64748b" style={{ margin: '0 auto 10px' }} />
+                  <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>
+                    Chưa Đủ Điều Kiện Đánh Giá
+                  </h4>
+                  <p style={{ color: '#64748b', fontSize: '13px', margin: 0, maxWidth: '480px', marginInline: 'auto', lineHeight: 1.5 }}>
+                    {reviewEligibility.reason || 'Bạn chỉ có thể đánh giá sau khi đã mua sản phẩm và đơn hàng được giao thành công (Đã giao hàng).'}
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={isEditingReview ? handleUpdateReview : handleSubmitReview}>
@@ -1031,25 +1099,107 @@ const ProductDetailPage = () => {
 
             {/* Reviews List */}
             <div>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-                Nhận Xét Từ Khách Hàng ({reviews.length})
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                  Nhận Xét Từ Khách Hàng ({filteredReviews.length})
+                </h3>
+                {selectedRatingFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRatingFilter('all')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Xóa lọc (Xem tất cả)
+                  </button>
+                )}
+              </div>
+
+              {/* Star Filter Buttons (Shopee/Tiki Style) */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', padding: '12px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '18px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginRight: '4px' }}>Lọc xem:</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRatingFilter('all')}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: selectedRatingFilter === 'all' ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                    background: selectedRatingFilter === 'all' ? '#eff6ff' : '#ffffff',
+                    color: selectedRatingFilter === 'all' ? '#1d4ed8' : '#475569',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  Tất cả ({reviewStats.total})
+                </button>
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = reviewStats?.breakdown?.[star] || 0;
+                  const isSelected = selectedRatingFilter === star;
+                  return (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setSelectedRatingFilter(isSelected ? 'all' : star)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        border: isSelected ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                        background: isSelected ? '#fffbeb' : '#ffffff',
+                        color: isSelected ? '#b45309' : '#475569',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span>{star}</span>
+                      <Star size={13} fill="#f59e0b" color="#f59e0b" />
+                      <span>({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               {loadingReviews ? (
                 <div style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                   <div className="spinner" style={{ margin: '0 auto 12px' }} />
                   Đang tải nhận xét...
                 </div>
-              ) : reviews.length === 0 ? (
+              ) : filteredReviews.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 20px', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
                   <MessageSquare size={36} color="#94a3b8" style={{ margin: '0 auto 10px' }} />
-                  <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>
-                    Chưa có nhận xét nào cho sản phẩm này. Hãy là người đầu tiên đánh giá!
+                  <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 10px' }}>
+                    {reviews.length === 0
+                      ? 'Chưa có nhận xét nào cho sản phẩm này. Hãy là người đầu tiên đánh giá!'
+                      : `Không có nhận xét nào ${selectedRatingFilter} sao.`}
                   </p>
+                  {selectedRatingFilter !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRatingFilter('all')}
+                      className="btn-secondary"
+                      style={{ padding: '6px 16px', fontSize: '13px' }}
+                    >
+                      Xem tất cả đánh giá
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {reviews.map((rev) => (
+                  {filteredReviews.map((rev) => (
                     <div
                       key={rev._id}
                       style={{

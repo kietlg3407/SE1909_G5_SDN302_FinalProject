@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Review = require('../models/reviewModel');
 const Product = require('../models/productModel');
+const Order = require('../models/orderModel');
 
 /**
  * Tự động tính toán lại điểm rating trung bình và số lượng review của sản phẩm
@@ -74,6 +75,20 @@ const createReview = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Bạn đã gửi đánh giá cho sản phẩm này rồi',
+      });
+    }
+
+    // Ràng buộc: Chỉ người dùng đã mua sản phẩm và đơn hàng đã giao thành công (Delivered) mới được đánh giá
+    const deliveredOrder = await Order.findOne({
+      user: req.user._id,
+      status: 'Delivered',
+      'orderItems.product': productId,
+    });
+
+    if (!deliveredOrder) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có thể đánh giá sản phẩm sau khi đã mua và đơn hàng được giao thành công (Delivered).',
       });
     }
 
@@ -206,11 +221,21 @@ const getProductReviews = async (req, res) => {
       stats.average = Math.round((sum / reviews.length) * 10) / 10;
     }
 
+    // Hỗ trợ lọc theo số sao
+    let finalReviews = reviews;
+    const { rating } = req.query;
+    if (rating && !isNaN(Number(rating))) {
+      const numRating = Number(rating);
+      if (numRating >= 1 && numRating <= 5) {
+        finalReviews = reviews.filter((r) => r.rating === numRating);
+      }
+    }
+
     res.json({
       success: true,
-      count: reviews.length,
+      count: finalReviews.length,
       stats,
-      reviews,
+      reviews: finalReviews,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Lỗi lấy danh sách đánh giá', error: error.message });
@@ -234,6 +259,13 @@ const getAdminReviews = async (req, res) => {
       query.response = { $gt: '' };
     } else if (filter === 'unreplied') {
       query.$or = [{ response: '' }, { response: { $exists: false } }];
+    }
+
+    if (req.query.rating && !isNaN(Number(req.query.rating))) {
+      const numRating = Number(req.query.rating);
+      if (numRating >= 1 && numRating <= 5) {
+        query.rating = numRating;
+      }
     }
 
     const [reviews, total] = await Promise.all([
@@ -339,6 +371,67 @@ const deleteReview = async (req, res) => {
   }
 };
 
+/**
+ * @desc Kiểm tra điều kiện đánh giá của khách hàng đối với sản phẩm
+ * @route GET /api/reviews/product/:productId/eligibility
+ * @access Private (Khách hàng)
+ */
+const checkReviewEligibility = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({ success: false, message: 'ID sản phẩm không hợp lệ' });
+    }
+
+    if (req.user.role !== 'customer') {
+      return res.json({
+        success: true,
+        canReview: false,
+        reason: 'Chỉ tài khoản khách hàng mới có thể đánh giá sản phẩm.',
+      });
+    }
+
+    const existingReview = await Review.findOne({
+      product: productId,
+      user: req.user._id,
+    });
+
+    if (existingReview) {
+      return res.json({
+        success: true,
+        canReview: false,
+        hasReviewed: true,
+        reviewId: existingReview._id,
+        reason: 'Bạn đã gửi đánh giá cho sản phẩm này rồi.',
+      });
+    }
+
+    const deliveredOrder = await Order.findOne({
+      user: req.user._id,
+      status: 'Delivered',
+      'orderItems.product': productId,
+    });
+
+    if (!deliveredOrder) {
+      return res.json({
+        success: true,
+        canReview: false,
+        hasPurchasedAndDelivered: false,
+        reason: 'Bạn cần mua sản phẩm và nhận hàng thành công (Delivered) mới có thể gửi đánh giá.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      canReview: true,
+      hasPurchasedAndDelivered: true,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi kiểm tra điều kiện đánh giá', error: error.message });
+  }
+};
+
 module.exports = {
   createReview,
   updateMyReview,
@@ -346,5 +439,6 @@ module.exports = {
   getAdminReviews,
   updateReviewStatus,
   deleteReview,
+  checkReviewEligibility,
 };
 
