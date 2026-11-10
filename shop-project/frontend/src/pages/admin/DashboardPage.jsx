@@ -53,6 +53,31 @@ const formatCurrency = (value) =>
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('vi-VN');
 
+const barValuePlugin = {
+  id: 'barValuePlugin',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (!meta || !meta.visible) return;
+      meta.data.forEach((bar, index) => {
+        const val = dataset.data[index];
+        if (val === undefined || val === null) return;
+        const formatted =
+          index === 0 ? formatCurrency(val) : formatNumber(val);
+        ctx.save();
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const yPos = Math.max(bar.y - 5, 14);
+        ctx.fillText(formatted, bar.x, yPos);
+        ctx.restore();
+      });
+    });
+  },
+};
+
 const getErrorMessage = (error) =>
   error.response?.data?.message ||
   error.response?.data?.error ||
@@ -205,6 +230,7 @@ const DashboardPage = () => {
           hoverBackgroundColor: ['#3730a3', '#1e40af', '#6d28d9', '#0d9488'],
           borderRadius: 8,
           maxBarThickness: 48,
+          minBarLength: 28,
         },
       ],
     }),
@@ -240,10 +266,12 @@ const DashboardPage = () => {
         padding: 10,
         callbacks: {
           label: (context) => {
+            const labels = ['Doanh thu', 'Đơn hàng', 'Người dùng hoạt động', 'Sản phẩm'];
+            const label = labels[context.dataIndex] || context.dataset.label || 'Giá trị';
             if (context.dataIndex === 0) {
               return ` Doanh thu: ${formatCurrency(context.raw)}`;
             }
-            return ` ${context.dataset.label || 'Giá trị'}: ${formatNumber(context.raw)}`;
+            return ` ${label}: ${formatNumber(context.raw)}`;
           },
         },
       },
@@ -252,6 +280,7 @@ const DashboardPage = () => {
       x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } },
       y: {
         beginAtZero: true,
+        grace: '14%',
         grid: { color: '#e2e8f0' },
         ticks: { color: '#64748b', font: { size: 11 } },
       },
@@ -466,7 +495,9 @@ const DashboardPage = () => {
                   )}
                 </div>
 
-                <div className="dashboard-chart" data-testid="bar-chart-container"><Bar data={overviewData} options={chartOptions} /></div>
+                <div className="dashboard-chart" data-testid="bar-chart-container">
+                  <Bar data={overviewData} options={chartOptions} plugins={[barValuePlugin]} />
+                </div>
               </article>
               <article className="dashboard-card" data-testid="trend-chart-card">
                 <div className="dashboard-card-header"><div><h2>Xu hướng doanh thu</h2><p>Biến động theo dữ liệu backend</p></div><CircleDollarSign size={19} className="dashboard-card-icon" /></div>

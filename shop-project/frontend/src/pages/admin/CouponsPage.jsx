@@ -66,7 +66,17 @@ const formatDate = (date) => {
 };
 
 const isExpired = (coupon) =>
-  coupon.expiryDate && new Date(coupon.expiryDate).getTime() < Date.now();
+  coupon.isExpired !== undefined
+    ? coupon.isExpired
+    : (coupon.expiryDate && new Date(coupon.expiryDate).getTime() < Date.now());
+
+const isLimitReached = (coupon) =>
+  coupon.isLimitReached !== undefined
+    ? coupon.isLimitReached
+    : (coupon.usageLimit !== null &&
+       coupon.usageLimit !== undefined &&
+       coupon.usageLimit > 0 &&
+       (coupon.usedCount || 0) >= coupon.usageLimit);
 
 const formatCurrency = (value) =>
   Number(value || 0).toLocaleString('vi-VN', {
@@ -180,8 +190,19 @@ const CouponsPage = () => {
   }, [deleteTarget, deletingId]);
 
   const counts = useMemo(() => {
-    const expired = coupons.filter(isExpired).length;
-    return { all: total, active: coupons.length - expired, expired, displayed: coupons.length };
+    let expired = 0;
+    let limitReached = 0;
+    let active = 0;
+    coupons.forEach((c) => {
+      if (isExpired(c)) {
+        expired++;
+      } else if (isLimitReached(c)) {
+        limitReached++;
+      } else {
+        active++;
+      }
+    });
+    return { all: total, active, expired, limitReached, displayed: coupons.length };
   }, [total, coupons]);
 
   const handleSortSelect = (event) => {
@@ -677,6 +698,7 @@ const CouponsPage = () => {
         .coupon-pill strong { color: #0f172a; }
         .coupon-pill-active { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
         .coupon-pill-expired { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+        .coupon-pill-limit { border-color: #fde68a; background: #fffbeb; color: #b45309; }
         .coupon-toolbar-tools { display: flex; gap: 8px; }
         .coupon-search { position: relative; min-width: 190px; }
         .coupon-search svg { position: absolute; left: 10px; top: 9px; color: #94a3b8; }
@@ -701,6 +723,7 @@ const CouponsPage = () => {
         .coupon-status { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 800; white-space: nowrap; }
         .coupon-status-active { background: #dcfce7; color: #15803d; }
         .coupon-status-expired { background: #fee2e2; color: #b91c1c; }
+        .coupon-status-limit { background: #fef3c7; color: #b45309; }
         .coupon-row-actions { display: flex; justify-content: flex-end; gap: 4px; }
         .coupon-icon-button { display: inline-flex; align-items: center; justify-content: center; padding: 7px; border-radius: 7px; color: #64748b; }
         .coupon-icon-button:hover { background: #f1f5f9; color: #0f172a; }
@@ -947,7 +970,8 @@ const CouponsPage = () => {
               <div className="coupon-summary">
                 <span className="coupon-pill"><strong>{counts.all}</strong> Tất cả</span>
                 <span className="coupon-pill coupon-pill-active"><strong>{counts.active}</strong> Đang hoạt động</span>
-                <span className="coupon-pill coupon-pill-expired"><strong>{counts.expired}</strong> Hết hạn</span>
+                <span className="coupon-pill coupon-pill-expired"><strong>{counts.expired}</strong> Đã hết hạn</span>
+                <span className="coupon-pill coupon-pill-limit"><strong>{counts.limitReached}</strong> Hết lượt dùng</span>
               </div>
               <div className="coupon-toolbar-tools">
                 <div className="coupon-search">
@@ -960,6 +984,7 @@ const CouponsPage = () => {
                     <option value="all">Tất cả trạng thái</option>
                     <option value="active">Đang hoạt động</option>
                     <option value="expired">Đã hết hạn</option>
+                    <option value="limit_reached">Hết lượt dùng</option>
                   </select>
                 </label>
                 <label className="coupon-filter">
@@ -1036,13 +1061,26 @@ const CouponsPage = () => {
                                 </button>
                               </span>
                               <span className="coupon-subtext">
-                                {coupon.usageLimit ? `Tối đa ${coupon.usageLimit} lượt dùng` : 'Không giới hạn lượt dùng'}
+                                {coupon.usageLimit
+                                  ? `Đã dùng: ${coupon.usedCount || 0} / ${coupon.usageLimit} lượt`
+                                  : `Đã dùng: ${coupon.usedCount || 0} lượt (Không giới hạn)`}
+                                {isLimitReached(coupon) && (
+                                  <span style={{ color: '#b45309', fontWeight: 700, marginLeft: '6px' }}>• Hết lượt dùng</span>
+                                )}
                               </span>
                             </td>
                             <td><span className="coupon-discount">{coupon.discountType === 'percentage' ? `${coupon.discountValue}%` : formatCurrency(coupon.discountValue)}</span><span className="coupon-subtext">{coupon.discountType === 'percentage' ? 'Theo phần trăm' : 'Theo số tiền'}</span></td>
                             <td>{coupon.minOrderValue ? formatCurrency(coupon.minOrderValue) : 'Không yêu cầu'}</td>
                             <td><span className="coupon-subtext" style={{ marginTop: 0 }}>{coupon.expiryDate ? formatDate(coupon.expiryDate) : 'Không giới hạn'}</span></td>
-                            <td><span className={`coupon-status ${expired ? 'coupon-status-expired' : 'coupon-status-active'}`}>{expired ? <Clock3 size={12} /> : <Check size={12} />}{expired ? 'Đã hết hạn' : 'Đang hoạt động'}</span></td>
+                            <td>
+  {expired ? (
+    <span className="coupon-status coupon-status-expired"><Clock3 size={12} /> Đã hết hạn</span>
+  ) : isLimitReached(coupon) ? (
+    <span className="coupon-status coupon-status-limit"><AlertTriangle size={12} /> Hết lượt dùng</span>
+  ) : (
+    <span className="coupon-status coupon-status-active"><Check size={12} /> Đang hoạt động</span>
+  )}
+</td>
                             <td><div className="coupon-row-actions"><button type="button" className="coupon-icon-button" onClick={() => handleEdit(coupon)} aria-label={`Sửa ${coupon.code}`}><Edit3 size={15} /></button><button type="button" className="coupon-icon-button coupon-icon-button-danger" onClick={() => handleDelete(coupon)} aria-label={`Xóa ${coupon.code}`} title={coupon.code === 'WELCOME10' ? 'Mã hệ thống không thể xóa' : 'Xóa mã'} disabled={coupon.code === 'WELCOME10' || deletingId === getCouponId(coupon)} style={coupon.code === 'WELCOME10' ? { opacity: 0.35, cursor: 'not-allowed' } : {}}>{deletingId === getCouponId(coupon) ? <RefreshCw size={15} className="coupon-spin" /> : <Trash2 size={15} />}</button></div></td>
                           </tr>
                         );
