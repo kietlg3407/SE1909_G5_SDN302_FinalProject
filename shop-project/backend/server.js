@@ -1,11 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const swaggerUi = require('swagger-ui-express');
-const YAML = require('yaml');
+const { spec: openApiSpec } = require('./src/docs/openapiSpec');
 const connectDB = require('./src/config/db');
 
 dotenv.config();
@@ -17,7 +16,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(YAML.parse(fs.readFileSync(path.join(__dirname, 'openapi.yaml'), 'utf8'))));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+  swaggerOptions: { persistAuthorization: true },
+}));
 
 // Cấu hình Template Engine EJS cho Admin Dashboard
 app.set('view engine', 'ejs');

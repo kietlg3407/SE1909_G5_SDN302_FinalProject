@@ -1,29 +1,297 @@
 openapi: 3.0.3
 info:
-  title: Shop Quần Áo API - Authentication, User Profile & Address Management
+  title: CLOSET STUDIO API
   version: 1.0.0
-  description: Tài liệu OpenAPI 3.0.3 cho phân hệ Xác thực (Authentication), Hồ sơ cá nhân (User Profile) và Sổ địa chỉ (Address Management).
+  description: >-
+    Dự án SE1909_G5_SDN302_FinalProject (CLOSET STUDIO) là website thương mại
+    điện tử bán quần áo, phục vụ bài tập lớn môn SDN302. Khách hàng xem danh
+    mục, tìm kiếm, lọc, sắp xếp, quản lý giỏ hàng và danh sách yêu thích, đặt
+    hàng, đánh giá và bình luận. Nhân viên và quản trị viên quản lý sản phẩm,
+    phân loại, đơn hàng, mã giảm giá, người dùng và thống kê.
+
+
+    Công nghệ sử dụng:
+
+
+    - Backend: Node.js và Express 5.
+
+    - Cơ sở dữ liệu: MongoDB với Mongoose.
+
+    - Frontend: React 19, Vite, React Router 7, Axios, react-hot-toast,
+    lucide-react và Chart.js.
+
+    - Xác thực: JWT (jsonwebtoken) qua header Authorization Bearer; mật khẩu
+    được băm bằng bcryptjs trong hook pre-save của model User; phân quyền bằng
+    middleware protect, isAdmin và isStaffOrAdmin. Dashboard quản trị render
+    bằng EJS dùng cookie httpOnly admin_token.
+
+    - Thư viện và dịch vụ khác: Cloudinary và Multer cho ảnh sản phẩm và avatar,
+    Nodemailer cho email đặt lại mật khẩu, CORS, cookie-parser, dotenv, và
+    Swagger UI (OpenAPI 3) tại /api-docs.
+
+
+    Hệ thống đăng ký đúng 93 endpoint. Mỗi endpoint là một cặp phương thức HTTP
+    và đường dẫn sau khi gắn prefix trong server.js. Router đánh giá được mount
+    tại /api và /api/reviews, mỗi nơi 7 đường dẫn. Router bình luận được mount
+    tại /api và /api/comments; 5 handler gắn tại /api trùng phương thức và đường
+    dẫn với router đánh giá (Express khớp router đánh giá trước) nên không tính
+    thêm endpoint. Phân bổ:
+
+
+    - Hệ thống: 1 (GET /)
+
+    - Giao diện Admin EJS: 7
+
+    - Người dùng: 14 (xác thực 5, gồm quên mật khẩu và đặt lại mật khẩu; hồ sơ
+    4; địa chỉ 5)
+
+    - Yêu thích: 4
+
+    - Đánh giá: 14
+
+    - Bình luận: 5
+
+    - Mã giảm giá: 6
+
+    - Sản phẩm: 8
+
+    - Danh mục: 5
+
+    - Thương hiệu: 5
+
+    - Giỏ hàng: 5
+
+    - Wishlist: 4
+
+    - Đơn hàng: 7
+
+    - Quản trị người dùng: 7
+
+    - Thống kê: 1
 servers:
   - url: http://localhost:5000
-    description: Local Development Server
+    description: Máy phát triển cục bộ
   - url: /
-    description: Current Server
-security:
-  - bearerAuth: []
+    description: Máy chủ hiện tại
 tags:
-  - name: Authentication
-    description: Đăng ký, Đăng nhập và Đăng xuất
-  - name: User Profile
-    description: Quản lý thông tin cá nhân, mật khẩu và ảnh đại diện
-  - name: Addresses
-    description: Quản lý sổ địa chỉ giao hàng (chỉ dành cho Customer)
+  - name: Hệ thống
+  - name: Giao diện Admin
+  - name: Xác thực
+  - name: Hồ sơ
+  - name: Địa chỉ
+  - name: Yêu thích
+  - name: Đánh giá
+  - name: Mã giảm giá
+  - name: Sản phẩm
+  - name: Danh mục
+  - name: Thương hiệu
+  - name: Bình luận
+  - name: Giỏ hàng
+  - name: Wishlist
+  - name: Đơn hàng
+  - name: Quản trị người dùng
+  - name: Thống kê
 paths:
+  /:
+    get:
+      tags:
+        - Hệ thống
+      summary: Kiểm tra API đang chạy
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Chuỗi thông báo API đang chạy
+          content:
+            text/plain:
+              schema:
+                type: string
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /admin/logout:
+    post:
+      tags:
+        - Giao diện Admin
+      summary: Đăng xuất dashboard EJS và xóa cookie admin_token
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Chuyển hướng hoặc trang xác nhận đăng xuất
+          content:
+            text/html:
+              schema:
+                type: string
+        "302":
+          description: Chuyển hướng sau khi đăng xuất
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /admin:
+    get:
+      tags:
+        - Giao diện Admin
+      summary: Chuyển tới dashboard
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
+  /admin/dashboard:
+    get:
+      tags:
+        - Giao diện Admin
+      summary: Trang tổng quan EJS
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "200":
+          description: HTML dashboard
+          content:
+            text/html:
+              schema:
+                type: string
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
+  /admin/users:
+    get:
+      tags:
+        - Giao diện Admin
+      summary: Trang quản lý người dùng EJS
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "200":
+          description: HTML danh sách người dùng
+          content:
+            text/html:
+              schema:
+                type: string
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
+  /admin/users/{id}/role:
+    post:
+      tags:
+        - Giao diện Admin
+      summary: Đổi vai trò người dùng từ form EJS
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  description: customer, staff hoặc admin
+                  enum:
+                    - customer
+                    - staff
+                    - admin
+  /admin/users/{id}/delete:
+    post:
+      tags:
+        - Giao diện Admin
+      summary: Xóa người dùng từ form EJS
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /admin/coupons:
+    get:
+      tags:
+        - Giao diện Admin
+      summary: Trang mã giảm giá EJS
+      description: Yêu cầu cookie httpOnly admin_token của tài khoản admin. Thiếu
+        quyền thì chuyển hướng về trang đăng nhập.
+      security:
+        - adminCookie: []
+      responses:
+        "200":
+          description: HTML mã giảm giá
+          content:
+            text/html:
+              schema:
+                type: string
+        "302":
+          description: Chuyển về trang đăng nhập khi thiếu cookie, token hết hạn hoặc
+            không phải admin
   /api/users/register:
     post:
       tags:
-        - Authentication
-      summary: Đăng ký tài khoản mới
+        - Xác thực
+      summary: Đăng ký tài khoản customer
+      description: Không yêu cầu đăng nhập.
       security: []
+      responses:
+        "201":
+          description: Tạo tài khoản và trả JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Thiếu trường hoặc dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Email đã được dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
@@ -37,123 +305,113 @@ paths:
               properties:
                 name:
                   type: string
-                  minLength: 2
-                  maxLength: 100
-                  example: Nguyễn Văn A
+                  description: Họ tên, 2 đến 100 ký tự
                 email:
                   type: string
-                  format: email
-                  example: newuser@shop.com
+                  description: Email
                 password:
                   type: string
-                  minLength: 6
-                  example: password123
-      responses:
-        '201':
-          description: Đăng ký tài khoản thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          description: Dữ liệu đầu vào không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Email này đã được sử dụng
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Lỗi hệ thống
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                  description: Mật khẩu, tối thiểu 6 ký tự
   /api/users/login:
     post:
       tags:
-        - Authentication
-      summary: Đăng nhập và nhận JWT Token
+        - Xác thực
+      summary: Đăng nhập và nhận JWT
+      description: Không yêu cầu đăng nhập.
       security: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - email
-                - password
-              properties:
-                email:
-                  type: string
-                  format: email
-                  example: customer@shop.com
-                password:
-                  type: string
-                  example: password123
       responses:
-        '200':
-          description: Đăng nhập thành công
+        "200":
+          description: Đăng nhập thành công. Admin còn nhận cookie admin_token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Thiếu email hoặc mật khẩu
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Email hoặc mật khẩu không chính xác
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Email hoặc mật khẩu không đúng
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Tài khoản đã bị khóa hoặc ngừng hoạt động
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Tài khoản bị khóa
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
           description: Lỗi hệ thống
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  description: Email
+                password:
+                  type: string
+                  description: Mật khẩu
   /api/users/logout:
     post:
       tags:
-        - Authentication
+        - Xác thực
       summary: Đăng xuất và xóa cookie admin_token
+      description: Không yêu cầu đăng nhập.
       security: []
       responses:
-        '200':
+        "200":
           description: Đăng xuất thành công
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Đăng xuất thành công
-
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
   /api/users/forgot-password:
     post:
       tags:
-        - Authentication
-      summary: Yêu cầu đặt lại mật khẩu qua email
-      description: Luôn trả về cùng một thông báo cho email tồn tại và không tồn tại. Token được lưu dạng băm SHA-256, hết hạn sau 15 phút và chỉ dùng một lần.
+        - Xác thực
+      summary: Gửi email đặt lại mật khẩu
+      description: Không yêu cầu đăng nhập.
       security: []
+      responses:
+        "200":
+          description: Luôn cùng một thông báo, không tiết lộ email có tồn tại hay không
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Email không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
@@ -165,42 +423,40 @@ paths:
               properties:
                 email:
                   type: string
-                  format: email
-                  example: customer@shop.com
+                  description: Email tài khoản
+  /api/users/reset-password/{token}:
+    post:
+      tags:
+        - Xác thực
+      summary: Đặt mật khẩu mới bằng token một lần
+      description: Không yêu cầu đăng nhập.
+      security: []
       responses:
-        '200':
-          description: Đã tiếp nhận yêu cầu (không tiết lộ email có tồn tại hay không)
+        "200":
+          description: Đổi mật khẩu thành công và hủy token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          description: Email không hợp lệ
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Token không hợp lệ, hết hạn, đã dùng, hoặc mật khẩu quá ngắn
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
           description: Lỗi hệ thống
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/users/reset-password/{token}:
-    post:
-      tags:
-        - Authentication
-      summary: Đặt mật khẩu mới bằng token trong email
-      security: []
+                $ref: "#/components/schemas/MessageResponse"
       parameters:
-        - in: path
-          name: token
+        - name: token
+          in: path
           required: true
           schema:
             type: string
-            minLength: 64
-            maxLength: 64
+            description: Token đặt lại mật khẩu, 64 ký tự hex
       requestBody:
         required: true
         content:
@@ -212,111 +468,111 @@ paths:
               properties:
                 password:
                   type: string
-                  minLength: 6
-                  example: newpassword123
+                  description: Mật khẩu mới, tối thiểu 6 ký tự
+  /api/users/profile:
+    get:
+      tags:
+        - Hồ sơ
+      summary: Lấy hồ sơ người dùng hiện tại
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          description: Đặt lại mật khẩu thành công và token đã bị hủy
+        "200":
+          description: Hồ sơ, không gồm mật khẩu và token đặt lại mật khẩu
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
-        '400':
-          description: Token không hợp lệ, đã hết hạn, đã dùng, hoặc mật khẩu quá ngắn
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
           description: Lỗi hệ thống
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/users/profile:
-    get:
+                $ref: "#/components/schemas/MessageResponse"
+    put:
       tags:
-        - User Profile
-      summary: Lấy thông tin cá nhân hiện tại
+        - Hồ sơ
+      summary: Cập nhật họ tên
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
       responses:
-        '200':
-          description: Thông tin hồ sơ người dùng
+        "200":
+          description: Hồ sơ đã cập nhật và JWT mới
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfile'
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Họ tên không hợp lệ
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Tài khoản bị khóa
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Không tìm thấy người dùng
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    put:
-      tags:
-        - User Profile
-      summary: Cập nhật thông tin hồ sơ cá nhân (họ tên)
-      security:
-        - bearerAuth: []
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - name
               properties:
                 name:
                   type: string
-                  minLength: 2
-                  maxLength: 100
-                  example: Nguyễn Văn B
-      responses:
-        '200':
-          description: Cập nhật hồ sơ thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          description: Họ tên không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Tài khoản bị khóa
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                  description: Họ tên mới, 2 đến 100 ký tự
   /api/users/change-password:
     put:
       tags:
-        - User Profile
-      summary: Đổi mật khẩu và vô hiệu hóa token cũ
+        - Hồ sơ
+      summary: Đổi mật khẩu khi đang đăng nhập
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: Đổi mật khẩu thành công, trả JWT mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Mật khẩu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
@@ -329,50 +585,49 @@ paths:
               properties:
                 currentPassword:
                   type: string
-                  example: password123
+                  description: Mật khẩu hiện tại
                 newPassword:
                   type: string
-                  minLength: 6
-                  example: newpassword123
-      responses:
-        '200':
-          description: Đổi mật khẩu thành công, trả về token mới
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Đổi mật khẩu thành công
-                  token:
-                    type: string
-        '400':
-          description: Mật khẩu hiện tại sai hoặc mật khẩu mới không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Tài khoản bị khóa
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                  description: Mật khẩu mới, tối thiểu 6 ký tự, khác mật khẩu cũ
   /api/users/upload-avatar:
     post:
       tags:
-        - User Profile
-      summary: Tải lên ảnh đại diện (tối đa 2MB, chỉ nhận JPEG/PNG/WEBP)
+        - Hồ sơ
+      summary: Tải ảnh đại diện lên Cloudinary
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: URL avatar mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Tệp không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "413":
+          description: Vượt quá 2MB
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
@@ -385,245 +640,4077 @@ paths:
                 avatar:
                   type: string
                   format: binary
-                  description: Tệp ảnh đại diện (image/jpeg, image/png, image/webp, tối đa 2MB)
-      responses:
-        '200':
-          description: Cập nhật ảnh đại diện thành công
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Cập nhật ảnh đại diện thành công
-                  avatarUrl:
-                    type: string
-                    example: https://res.cloudinary.com/demo/image/upload/avatar.jpg
-        '400':
-          description: Thiếu tệp hoặc sai định dạng ảnh
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Tài khoản bị khóa
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '413':
-          description: Kích thước tệp vượt quá 2MB
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
+                  description: JPEG, PNG hoặc WEBP, tối đa 2MB
   /api/users/addresses:
     get:
       tags:
-        - Addresses
-      summary: Lấy danh sách địa chỉ nhận hàng của khách hàng
+        - Địa chỉ
+      summary: Danh sách địa chỉ nhận hàng
+      description: Yêu cầu Bearer JWT của customer.
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
+          description: Mảng địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    post:
+      tags:
+        - Địa chỉ
+      summary: Thêm địa chỉ nhận hàng
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Danh sách địa chỉ sau khi thêm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu trường hoặc số điện thoại không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - street
+                - city
+                - state
+                - phone
+              properties:
+                street:
+                  type: string
+                  description: Số nhà, đường
+                city:
+                  type: string
+                  description: Phường, xã
+                state:
+                  type: string
+                  description: Quận, tỉnh
+                phone:
+                  type: string
+                  description: Số điện thoại Việt Nam
+                isDefault:
+                  type: boolean
+                  description: Đặt làm địa chỉ mặc định
+  /api/users/addresses/{addressId}:
+    put:
+      tags:
+        - Địa chỉ
+      summary: Cập nhật một địa chỉ
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách địa chỉ sau khi sửa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                street:
+                  type: string
+                  description: Số nhà, đường
+                city:
+                  type: string
+                  description: Phường, xã
+                state:
+                  type: string
+                  description: Quận, tỉnh
+                phone:
+                  type: string
+                  description: Số điện thoại Việt Nam
+                isDefault:
+                  type: boolean
+                  description: Đặt làm địa chỉ mặc định
+    delete:
+      tags:
+        - Địa chỉ
+      summary: Xóa một địa chỉ
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách địa chỉ còn lại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/users/addresses/{addressId}/default:
+    put:
+      tags:
+        - Địa chỉ
+      summary: Đặt địa chỉ mặc định
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
           description: Danh sách địa chỉ
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Address'
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-        '403':
-          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy địa chỉ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/favorites/toggle:
     post:
       tags:
-        - Addresses
-      summary: Thêm địa chỉ giao hàng mới
+        - Yêu thích
+      summary: Bật hoặc tắt sản phẩm yêu thích
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: Trạng thái yêu thích mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddressInput'
-      responses:
-        '201':
-          description: Thêm địa chỉ thành công
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Address'
-        '400':
-          description: Dữ liệu địa chỉ không hợp lệ
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-        '403':
-          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
-
-  /api/users/addresses/{addressId}:
-    put:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+  /api/favorites:
+    get:
       tags:
-        - Addresses
-      summary: Cập nhật địa chỉ giao hàng theo ID
+        - Yêu thích
+      summary: Danh sách sản phẩm yêu thích
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
-      parameters:
-        - name: addressId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: ObjectId của địa chỉ
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddressInput'
       responses:
-        '200':
-          description: Cập nhật địa chỉ thành công
+        "200":
+          description: Danh sách yêu thích
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Address'
-        '400':
-          description: ID địa chỉ hoặc dữ liệu không hợp lệ
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-        '403':
-          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
-        '404':
-          description: Không tìm thấy địa chỉ
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /api/favorites/ids:
+    get:
+      tags:
+        - Yêu thích
+      summary: Các ID sản phẩm đang yêu thích
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Mảng ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /api/favorites/{productId}:
     delete:
       tags:
-        - Addresses
-      summary: Xóa địa chỉ giao hàng theo ID
+        - Yêu thích
+      summary: Bỏ một sản phẩm khỏi yêu thích
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       parameters:
-        - name: addressId
+        - name: productId
           in: path
           required: true
           schema:
             type: string
-          description: ObjectId của địa chỉ
+            description: Định danh
+  /api/product/{productId}:
+    get:
+      tags:
+        - Đánh giá
+      summary: Lấy đánh giá của sản phẩm (router reviews mount tại /api)
+      description: Không yêu cầu đăng nhập.
+      security: []
       responses:
-        '200':
-          description: Xóa địa chỉ thành công
+        "200":
+          description: Danh sách đánh giá
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Address'
-        '400':
-          description: ID địa chỉ không hợp lệ
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-        '403':
-          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
-        '404':
-          description: Không tìm thấy địa chỉ để xóa
-
-  /api/users/addresses/{addressId}/default:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: rating
+          in: query
+          required: false
+          description: Lọc theo số sao
+          schema:
+            type: integer
+  /api/product/{productId}/eligibility:
+    get:
+      tags:
+        - Đánh giá
+      summary: Kiểm tra quyền đánh giá (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Được phép hoặc lý do không được đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api:
+    post:
+      tags:
+        - Đánh giá
+      summary: Tạo đánh giá (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Đánh giá đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu hoặc điều kiện mua hàng không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - rating
+                - comment
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+                rating:
+                  type: number
+                  description: Số sao từ 1 đến 5
+                comment:
+                  type: string
+                  description: Nội dung đánh giá
+  /api/{id}:
     put:
       tags:
-        - Addresses
-      summary: Đặt địa chỉ làm mặc định
+        - Đánh giá
+      summary: Sửa đánh giá của chính mình (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT.
       security:
         - bearerAuth: []
+      responses:
+        "200":
+          description: Đánh giá đã sửa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không phải đánh giá của bạn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
       parameters:
-        - name: addressId
+        - name: id
           in: path
           required: true
           schema:
             type: string
-          description: ObjectId của địa chỉ
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                rating:
+                  type: number
+                  description: Số sao 1 đến 5
+                comment:
+                  type: string
+                  description: Nội dung
+    delete:
+      tags:
+        - Đánh giá
+      summary: Xóa đánh giá (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
       responses:
-        '200':
-          description: Đặt địa chỉ mặc định thành công
+        "200":
+          description: Đã xóa
           content:
             application/json:
               schema:
-                type: array
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/admin:
+    get:
+      tags:
+        - Đánh giá
+      summary: Danh sách đánh giá cho staff (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          required: false
+          description: approved hoặc hidden
+          schema:
+            type: string
+        - name: rating
+          in: query
+          required: false
+          description: Lọc số sao
+          schema:
+            type: integer
+  /api/{id}/status:
+    put:
+      tags:
+        - Đánh giá
+      summary: Ẩn hoặc hiện đánh giá (router reviews mount tại /api)
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  description: approved hoặc hidden
+                  enum:
+                    - approved
+                    - hidden
+  /api/coupons:
+    get:
+      tags:
+        - Mã giảm giá
+      summary: Danh sách mã giảm giá
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Danh sách coupon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Tham số lọc không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          required: false
+          description: field:asc hoặc field:desc
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: active, expired hoặc limit_reached
+          schema:
+            type: string
+        - name: discountType
+          in: query
+          required: false
+          description: percentage hoặc fixed
+          schema:
+            type: string
+    post:
+      tags:
+        - Mã giảm giá
+      summary: Tạo mã giảm giá
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Coupon đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Mã đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - discountType
+                - discountValue
+              properties:
+                code:
+                  type: string
+                  description: Mã, 3-50 ký tự, chữ hoa, số, gạch ngang hoặc gạch dưới
+                discountType:
+                  type: string
+                  description: percentage hoặc fixed
+                  enum:
+                    - percentage
+                    - fixed
+                discountValue:
+                  type: number
+                  description: Giá trị giảm. Phần trăm không quá 100
+                minOrderValue:
+                  type: number
+                  description: Giá trị đơn tối thiểu
+                expiryDate:
+                  type: string
+                  description: Ngày hết hạn ISO, phải ở tương lai nếu có
+                  format: date-time
+                usageLimit:
+                  type: number
+                  description: Giới hạn lượt dùng
+  /api/coupons/apply:
+    post:
+      tags:
+        - Mã giảm giá
+      summary: Kiểm tra mã giảm giá cho đơn hàng
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Mã hợp lệ và số tiền giảm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Mã không dùng được
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Mã coupon
+                orderAmount:
+                  type: number
+                  description: Giá trị đơn, mặc định 0
+  /api/coupons/consume:
+    post:
+      tags:
+        - Mã giảm giá
+      summary: Ghi nhận khách đã dùng mã
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã ghi nhận
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Mã không dùng được
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Mã coupon
+  /api/coupons/{id}:
+    put:
+      tags:
+        - Mã giảm giá
+      summary: Cập nhật mã giảm giá
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Coupon đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                code:
+                  type: string
+                  description: Mã, 3-50 ký tự, chữ hoa, số, gạch ngang hoặc gạch dưới
+                discountType:
+                  type: string
+                  description: percentage hoặc fixed
+                  enum:
+                    - percentage
+                    - fixed
+                discountValue:
+                  type: number
+                  description: Giá trị giảm. Phần trăm không quá 100
+                minOrderValue:
+                  type: number
+                  description: Giá trị đơn tối thiểu
+                expiryDate:
+                  type: string
+                  description: Ngày hết hạn ISO, phải ở tương lai nếu có
+                  format: date-time
+                usageLimit:
+                  type: number
+                  description: Giới hạn lượt dùng
+    delete:
+      tags:
+        - Mã giảm giá
+      summary: Xóa mã giảm giá
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Không được xóa WELCOME10
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/products:
+    get:
+      tags:
+        - Sản phẩm
+      summary: Danh sách sản phẩm, có tìm kiếm, lọc, sắp xếp và phân trang
+      description: Bearer JWT là tùy chọn. Staff hoặc admin đăng nhập có thể xem thêm
+        sản phẩm ngừng bán.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách và thông tin phân trang
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Trang, mặc định 1
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Số bản ghi, mặc định 12, tối đa 100
+          schema:
+            type: integer
+        - name: search
+          in: query
+          required: false
+          description: Từ khóa tìm theo tên
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          description: Tên danh mục
+          schema:
+            type: string
+        - name: brand
+          in: query
+          required: false
+          description: Tên thương hiệu
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          required: false
+          description: Giá tối thiểu
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          required: false
+          description: Giá tối đa
+          schema:
+            type: number
+        - name: inStock
+          in: query
+          required: false
+          description: true để chỉ lấy sản phẩm còn hàng
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          required: false
+          description: price-asc, price-desc, rating, name-asc, name-desc, newest, oldest.
+            Cũng nhận sort.
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: all hoặc active khi người gọi là staff/admin
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          required: false
+          description: Lọc theo trạng thái bán
+          schema:
+            type: string
+    post:
+      tags:
+        - Sản phẩm
+      summary: Tạo sản phẩm
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Sản phẩm đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu trường bắt buộc
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+                - price
+                - category
+                - stock
+              properties:
+                name:
+                  type: string
+                  description: Tên sản phẩm, tối đa 150 ký tự
+                description:
+                  type: string
+                  description: Mô tả
+                price:
+                  type: number
+                  description: Giá bán, không âm
+                originalPrice:
+                  type: number
+                  description: Giá gốc
+                category:
+                  type: string
+                  description: Tên danh mục
+                brand:
+                  type: string
+                  description: Tên thương hiệu, mặc định CLOSET
+                stock:
+                  type: number
+                  description: Tồn kho
+                images:
+                  type: array
+                  items:
+                    type: string
+                  description: URL ảnh
+                isActive:
+                  type: boolean
+                  description: Đang bán
+  /api/products/{id}:
+    get:
+      tags:
+        - Sản phẩm
+      summary: Chi tiết một sản phẩm
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+    put:
+      tags:
+        - Sản phẩm
+      summary: Cập nhật sản phẩm hoặc bật tắt trạng thái bán
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Sản phẩm đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                name:
+                  type: string
+                  description: Tên sản phẩm, tối đa 150 ký tự
+                description:
+                  type: string
+                  description: Mô tả
+                price:
+                  type: number
+                  description: Giá bán, không âm
+                originalPrice:
+                  type: number
+                  description: Giá gốc
+                category:
+                  type: string
+                  description: Tên danh mục
+                brand:
+                  type: string
+                  description: Tên thương hiệu, mặc định CLOSET
+                stock:
+                  type: number
+                  description: Tồn kho
+                images:
+                  type: array
+                  items:
+                    type: string
+                  description: URL ảnh
+                isActive:
+                  type: boolean
+                  description: Đang bán
+    delete:
+      tags:
+        - Sản phẩm
+      summary: Xóa sản phẩm
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/products/{id}/variants:
+    post:
+      tags:
+        - Sản phẩm
+      summary: Thêm biến thể
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Sản phẩm kèm biến thể mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Biến thể không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - stock
+              properties:
+                sku:
+                  type: string
+                  description: Mã SKU
+                size:
+                  type: string
+                  description: Kích cỡ
+                color:
+                  type: string
+                  description: Màu
+                price:
+                  type: number
+                  description: Giá biến thể, có thể null
+                stock:
+                  type: number
+                  description: Tồn kho biến thể
+                isActive:
+                  type: boolean
+                  description: Đang bán
+  /api/products/{id}/variants/{variantId}:
+    put:
+      tags:
+        - Sản phẩm
+      summary: Sửa biến thể
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Sản phẩm đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Biến thể không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                sku:
+                  type: string
+                  description: Mã SKU
+                size:
+                  type: string
+                  description: Kích cỡ
+                color:
+                  type: string
+                  description: Màu
+                price:
+                  type: number
+                  description: Giá biến thể, có thể null
+                stock:
+                  type: number
+                  description: Tồn kho biến thể
+                isActive:
+                  type: boolean
+                  description: Đang bán
+    delete:
+      tags:
+        - Sản phẩm
+      summary: Xóa biến thể
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa biến thể
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/categories:
+    get:
+      tags:
+        - Danh mục
+      summary: Danh mục đang hoạt động
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    post:
+      tags:
+        - Danh mục
+      summary: Tạo danh mục
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Danh mục đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Tên không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Tên đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Tên
+                description:
+                  type: string
+                  description: Mô tả
+                isActive:
+                  type: boolean
+                  description: Đang hoạt động
+  /api/categories/manage:
+    get:
+      tags:
+        - Danh mục
+      summary: Mọi danh mục, kể cả đang tắt
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /api/categories/{id}:
+    put:
+      tags:
+        - Danh mục
+      summary: Sửa danh mục
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Đang được sản phẩm dùng nên không đổi tên
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                name:
+                  type: string
+                  description: Tên
+                description:
+                  type: string
+                  description: Mô tả
+                isActive:
+                  type: boolean
+                  description: Đang hoạt động
+    delete:
+      tags:
+        - Danh mục
+      summary: Xóa danh mục
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Đang được sản phẩm dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/brands:
+    get:
+      tags:
+        - Thương hiệu
+      summary: Thương hiệu đang hoạt động
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    post:
+      tags:
+        - Thương hiệu
+      summary: Tạo thương hiệu
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Thương hiệu đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Tên không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Tên đã tồn tại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  description: Tên
+                description:
+                  type: string
+                  description: Mô tả
+                logo:
+                  type: string
+                  description: URL logo
+                isActive:
+                  type: boolean
+                  description: Đang hoạt động
+  /api/brands/manage:
+    get:
+      tags:
+        - Thương hiệu
+      summary: Mọi thương hiệu, kể cả đang tắt
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /api/brands/{id}:
+    put:
+      tags:
+        - Thương hiệu
+      summary: Sửa thương hiệu
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Đang được sản phẩm dùng nên không đổi tên
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                name:
+                  type: string
+                  description: Tên
+                description:
+                  type: string
+                  description: Mô tả
+                logo:
+                  type: string
+                  description: URL logo
+                isActive:
+                  type: boolean
+                  description: Đang hoạt động
+    delete:
+      tags:
+        - Thương hiệu
+      summary: Xóa thương hiệu
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Đang được sản phẩm dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/reviews/product/{productId}:
+    get:
+      tags:
+        - Đánh giá
+      summary: Lấy đánh giá của một sản phẩm
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Danh sách đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: rating
+          in: query
+          required: false
+          description: Lọc theo số sao
+          schema:
+            type: integer
+  /api/reviews/product/{productId}/eligibility:
+    get:
+      tags:
+        - Đánh giá
+      summary: Kiểm tra khách có được đánh giá sản phẩm không
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Kết quả điều kiện đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/reviews:
+    post:
+      tags:
+        - Đánh giá
+      summary: Tạo đánh giá
+      description: Yêu cầu Bearer JWT của customer.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Đánh giá đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Chưa mua, đã đánh giá, hoặc dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - rating
+                - comment
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+                rating:
+                  type: number
+                  description: Số sao từ 1 đến 5
+                comment:
+                  type: string
+                  description: Nội dung đánh giá
+  /api/reviews/{id}:
+    put:
+      tags:
+        - Đánh giá
+      summary: Sửa đánh giá của chính mình
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không phải đánh giá của bạn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                rating:
+                  type: number
+                  description: Số sao 1 đến 5
+                comment:
+                  type: string
+                  description: Nội dung
+    delete:
+      tags:
+        - Đánh giá
+      summary: Xóa đánh giá
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/reviews/admin:
+    get:
+      tags:
+        - Đánh giá
+      summary: Danh sách đánh giá cho nhân viên
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách đánh giá
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          required: false
+          description: approved hoặc hidden
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          description: Cùng ý nghĩa với filter
+          schema:
+            type: string
+        - name: rating
+          in: query
+          required: false
+          description: Lọc số sao
+          schema:
+            type: integer
+  /api/reviews/{id}/status:
+    put:
+      tags:
+        - Đánh giá
+      summary: Duyệt hoặc ẩn đánh giá
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  description: approved hoặc hidden
+                  enum:
+                    - approved
+                    - hidden
+  /api/comments/product/{productId}:
+    get:
+      tags:
+        - Bình luận
+      summary: Bình luận của một sản phẩm
+      description: Không yêu cầu đăng nhập.
+      security: []
+      responses:
+        "200":
+          description: Danh sách bình luận
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/comments:
+    post:
+      tags:
+        - Bình luận
+      summary: Tạo bình luận hoặc trả lời
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Bình luận đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu nội dung
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Khách không được trả lời bình luận
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm hoặc bình luận cha
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+                - content
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+                content:
+                  type: string
+                  description: Nội dung bình luận
+                parentComment:
+                  type: string
+                  description: ID bình luận cha khi nhân viên hoặc admin trả lời
+  /api/comments/{id}:
+    put:
+      tags:
+        - Bình luận
+      summary: Sửa bình luận của chính mình
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không phải bình luận của bạn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                  description: Nội dung mới
+    delete:
+      tags:
+        - Bình luận
+      summary: Xóa bình luận của mình, hoặc staff xóa bất kỳ bình luận
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không được xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/comments/admin:
+    get:
+      tags:
+        - Bình luận
+      summary: Danh sách bình luận cho nhân viên
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách bình luận
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: filter
+          in: query
+          required: false
+          description: Bộ lọc danh sách quản trị
+          schema:
+            type: string
+  /api/cart:
+    get:
+      tags:
+        - Giỏ hàng
+      summary: Lấy giỏ hàng hiện tại
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Giỏ hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    post:
+      tags:
+        - Giỏ hàng
+      summary: Thêm sản phẩm vào giỏ
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Giỏ hàng sau khi thêm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Hết hàng hoặc thiếu phân loại
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+                quantity:
+                  type: number
+                  description: Số lượng, mặc định 1
+                variantId:
+                  type: string
+                  description: ID biến thể nếu sản phẩm có phân loại
+    delete:
+      tags:
+        - Giỏ hàng
+      summary: Xóa toàn bộ giỏ hàng
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Giỏ trống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /api/cart/{productId}:
+    put:
+      tags:
+        - Giỏ hàng
+      summary: Đổi số lượng một dòng trong giỏ
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Giỏ hàng đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Số lượng không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: variantId
+          in: query
+          required: false
+          description: ID biến thể của dòng cần sửa
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: number
+                  description: Số lượng mới
+                variantId:
+                  type: string
+                  description: ID biến thể
+    delete:
+      tags:
+        - Giỏ hàng
+      summary: Xóa một dòng trong giỏ
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Giỏ hàng sau khi xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+        - name: variantId
+          in: query
+          required: false
+          description: ID biến thể của dòng cần xóa
+          schema:
+            type: string
+  /api/wishlist:
+    get:
+      tags:
+        - Wishlist
+      summary: Lấy wishlist
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Wishlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    post:
+      tags:
+        - Wishlist
+      summary: Thêm sản phẩm vào wishlist
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Wishlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu productId
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+  /api/wishlist/{productId}:
+    delete:
+      tags:
+        - Wishlist
+      summary: Xóa sản phẩm khỏi wishlist
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Wishlist sau khi xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/wishlist/move-to-cart:
+    post:
+      tags:
+        - Wishlist
+      summary: Chuyển một sản phẩm sang giỏ hàng
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã chuyển sang giỏ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu phân loại hoặc hết hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - productId
+              properties:
+                productId:
+                  type: string
+                  description: ID sản phẩm
+                quantity:
+                  type: number
+                  description: Số lượng, mặc định 1
+                variantId:
+                  type: string
+                  description: ID biến thể nếu có phân loại
+  /api/orders:
+    post:
+      tags:
+        - Đơn hàng
+      summary: Tạo đơn từ giỏ hàng hoặc từ danh sách items
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Đơn đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Thiếu địa chỉ, giỏ trống hoặc hết hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - shippingAddress
+              properties:
+                shippingAddress:
+                  type: object
+                  required:
+                    - street
+                    - city
+                    - phone
+                  properties:
+                    street:
+                      type: string
+                      description: Số nhà, đường
+                    city:
+                      type: string
+                      description: Phường, xã
+                    state:
+                      type: string
+                      description: Quận, tỉnh
+                    phone:
+                      type: string
+                      description: Số điện thoại
+                paymentMethod:
+                  type: string
+                  description: COD, Banking hoặc VNPAY
+                  enum:
+                    - COD
+                    - Banking
+                    - VNPAY
+                couponCode:
+                  type: string
+                  description: Mã giảm giá
                 items:
-                  $ref: '#/components/schemas/Address'
-        '400':
-          description: ID địa chỉ không hợp lệ
-        '401':
-          description: Chưa đăng nhập hoặc token không hợp lệ
-        '403':
-          description: Không phải tài khoản Customer hoặc tài khoản bị khóa
-        '404':
-          description: Không tìm thấy địa chỉ
-
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - product
+                      - quantity
+                    properties:
+                      product:
+                        type: string
+                        description: ID sản phẩm
+                      quantity:
+                        type: number
+                        description: Số lượng
+                      variant:
+                        type: string
+                        description: ID biến thể, nếu sản phẩm có phân loại
+                  description: Bỏ trống để lấy giỏ hàng hiện tại
+                shippingPrice:
+                  type: number
+                  description: Phí vận chuyển, mặc định 30000
+    get:
+      tags:
+        - Đơn hàng
+      summary: Mọi đơn hàng
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách và phân trang
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Lọc trạng thái
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          description: Tìm theo mã hoặc khách
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+  /api/orders/my-orders:
+    get:
+      tags:
+        - Đơn hàng
+      summary: Đơn hàng của tôi
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách đơn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Pending, Confirmed, Processing, Shipping, Delivered hoặc Cancelled
+          schema:
+            type: string
+  /api/orders/{id}:
+    get:
+      tags:
+        - Đơn hàng
+      summary: Chi tiết đơn. Khách chỉ xem đơn của mình
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đơn hàng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không phải đơn của bạn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/orders/{id}/cancel:
+    put:
+      tags:
+        - Đơn hàng
+      summary: Khách hủy đơn của mình
+      description: Yêu cầu Bearer JWT.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã hủy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Đơn không còn hủy được
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không phải đơn của bạn
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                reason:
+                  type: string
+                  description: Lý do hủy
+  /api/orders/{id}/status:
+    put:
+      tags:
+        - Đơn hàng
+      summary: Đổi trạng thái đơn
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Trạng thái không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  description: Pending, Confirmed, Processing, Shipping, Delivered hoặc Cancelled
+                note:
+                  type: string
+                  description: Ghi chú
+  /api/orders/{id}/shipping:
+    put:
+      tags:
+        - Đơn hàng
+      summary: Cập nhật vận đơn
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                trackingNumber:
+                  type: string
+                  description: Mã vận đơn
+                shippingNotes:
+                  type: string
+                  description: Ghi chú giao hàng
+                status:
+                  type: string
+                  description: Trạng thái mới, nếu có
+  /api/admin/users:
+    get:
+      tags:
+        - Quản trị người dùng
+      summary: Danh sách người dùng
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách người dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Tìm theo tên hoặc email
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: false
+          description: customer, staff hoặc admin
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          description: Trang
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Kích thước trang
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          required: false
+          description: Trường sắp xếp
+          schema:
+            type: string
+        - name: all
+          in: query
+          required: false
+          description: true để lấy toàn bộ, không phân trang
+          schema:
+            type: string
+  /api/admin/users/staff:
+    post:
+      tags:
+        - Quản trị người dùng
+      summary: Tạo tài khoản staff
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Staff đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ hoặc email đã dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  description: Họ tên, 2 đến 100 ký tự
+                email:
+                  type: string
+                  description: Email
+                password:
+                  type: string
+                  description: Mật khẩu, tối thiểu 6 ký tự
+  /api/admin/staff:
+    post:
+      tags:
+        - Quản trị người dùng
+      summary: Tạo tài khoản staff (đường dẫn rút gọn)
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Staff đã tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Dữ liệu không hợp lệ hoặc email đã dùng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  description: Họ tên, 2 đến 100 ký tự
+                email:
+                  type: string
+                  description: Email
+                password:
+                  type: string
+                  description: Mật khẩu, tối thiểu 6 ký tự
+  /api/admin/users/{id}/role:
+    put:
+      tags:
+        - Quản trị người dùng
+      summary: Đổi vai trò
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã đổi vai trò
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Vai trò không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - role
+              properties:
+                role:
+                  type: string
+                  description: customer, staff hoặc admin
+                  enum:
+                    - customer
+                    - staff
+                    - admin
+  /api/admin/users/{id}/status:
+    patch:
+      tags:
+        - Quản trị người dùng
+      summary: Khóa hoặc mở tài khoản
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                isActive:
+                  type: boolean
+                  description: true để mở, false để khóa
+    put:
+      tags:
+        - Quản trị người dùng
+      summary: Khóa hoặc mở tài khoản
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã cập nhật trạng thái
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                isActive:
+                  type: boolean
+                  description: true để mở, false để khóa
+  /api/admin/users/{id}:
+    delete:
+      tags:
+        - Quản trị người dùng
+      summary: Xóa người dùng
+      description: Yêu cầu Bearer JWT của admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Đã xóa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Không xóa được chính mình
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Không tìm thấy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: Định danh
+  /api/admin/stats:
+    get:
+      tags:
+        - Thống kê
+      summary: Thống kê doanh thu và đơn hàng
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Số liệu thống kê
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      parameters:
+        - name: filterType
+          in: query
+          required: false
+          description: day, month hoặc year
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          description: Ngày YYYY-MM-DD khi filterType=day
+          schema:
+            type: string
+        - name: month
+          in: query
+          required: false
+          description: Tháng khi filterType=month
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: false
+          description: Năm
+          schema:
+            type: integer
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: "JWT trả về từ đăng nhập hoặc đăng ký. Gửi header Authorization:
+        Bearer <token>."
+    adminCookie:
+      type: apiKey
+      in: cookie
+      name: admin_token
+      description: Cookie httpOnly tạo khi admin đăng nhập, dùng cho các trang EJS /admin.
   schemas:
-    Address:
+    MessageResponse:
       type: object
       properties:
-        _id:
+        message:
           type: string
-          example: 660000000000000000000001
-        street:
-          type: string
-          example: 123 Nguyễn Văn Cừ
-        city:
-          type: string
-          example: Phường An Khánh
-        state:
-          type: string
-          example: Ninh Kiều, Cần Thơ
-        phone:
-          type: string
-          example: '0912345678'
-        isDefault:
+        success:
           type: boolean
-          example: true
-    AddressInput:
-      type: object
-      required:
-        - street
-        - city
-        - state
-        - phone
-      properties:
-        street:
-          type: string
-          example: 123 Nguyễn Văn Cừ
-        city:
-          type: string
-          example: Phường An Khánh
-        state:
-          type: string
-          example: Ninh Kiều, Cần Thơ
-        phone:
-          type: string
-          example: '0912345678'
-        isDefault:
-          type: boolean
-          example: false
     UserProfile:
       type: object
       properties:
@@ -646,24 +4733,11 @@ components:
         addresses:
           type: array
           items:
-            $ref: '#/components/schemas/Address'
+            type: object
     AuthResponse:
       allOf:
-        - $ref: '#/components/schemas/UserProfile'
+        - $ref: "#/components/schemas/UserProfile"
         - type: object
           properties:
             token:
               type: string
-    ErrorResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: Thông báo lỗi chi tiết
-    MessageResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.
-
