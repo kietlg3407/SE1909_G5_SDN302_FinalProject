@@ -64,7 +64,10 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu</label>
+            <div className="label-with-link">
+              <label>Mật khẩu</label>
+              <Link to="/forgot-password" className="forgot-link">Quên mật khẩu?</Link>
+            </div>
             <div className="input-with-icon">
               <Lock className="field-icon" size={18} />
               <input

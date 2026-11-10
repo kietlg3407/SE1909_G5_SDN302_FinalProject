@@ -4,6 +4,8 @@ const {
   registerUser,
   loginUser,
   logoutUser,
+  forgotPassword,
+  resetPassword,
   getUserProfile,
   updateUserProfile,
   changePassword,
@@ -44,6 +46,8 @@ const handleAvatarUpload = (req, res, next) => {
 router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:token', resetPassword);
 
 // --- 2. User Profile Routes ---
 router

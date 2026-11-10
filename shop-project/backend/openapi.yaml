@@ -147,6 +147,93 @@ paths:
                     type: string
                     example: Đăng xuất thành công
 
+  /api/users/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Yêu cầu đặt lại mật khẩu qua email
+      description: Luôn trả về cùng một thông báo cho email tồn tại và không tồn tại. Token được lưu dạng băm SHA-256, hết hạn sau 15 phút và chỉ dùng một lần.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: customer@shop.com
+      responses:
+        '200':
+          description: Đã tiếp nhận yêu cầu (không tiết lộ email có tồn tại hay không)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Email không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/users/reset-password/{token}:
+    post:
+      tags:
+        - Authentication
+      summary: Đặt mật khẩu mới bằng token trong email
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            minLength: 64
+            maxLength: 64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  minLength: 6
+                  example: newpassword123
+      responses:
+        '200':
+          description: Đặt lại mật khẩu thành công và token đã bị hủy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Token không hợp lệ, đã hết hạn, đã dùng, hoặc mật khẩu quá ngắn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/users/profile:
     get:
       tags:
@@ -573,4 +660,10 @@ components:
         message:
           type: string
           example: Thông báo lỗi chi tiết
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.
 

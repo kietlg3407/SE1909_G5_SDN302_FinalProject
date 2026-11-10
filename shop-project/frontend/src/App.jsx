@@ -11,6 +11,8 @@ import Sidebar from './components/admin/Sidebar';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import DashboardPage from './pages/admin/DashboardPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
@@ -103,6 +105,15 @@ function App() {
                 </GuestRoute>
               }
             />
+            <Route
+              path="/forgot-password"
+              element={
+                <GuestRoute>
+                  <ForgotPasswordPage />
+                </GuestRoute>
+              }
+            />
+            <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route
               path="/favorites"
               element={
