@@ -5,19 +5,19 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const navigationItems = [
   {
-    label: 'Dashboard Statistics',
+    label: 'Thống kê Dashboard',
     path: '/admin/dashboard',
     icon: BarChart3,
     roles: ['admin', 'staff'],
   },
   {
-    label: 'User Management',
+    label: 'Quản lý người dùng',
     path: '/admin/users',
     icon: Users,
     roles: ['admin'], // Chỉ Admin mới được hiển thị
   },
   {
-    label: 'Coupon/Promotion Management',
+    label: 'Quản lý khuyến mãi & mã giảm giá',
     path: '/admin/coupons',
     icon: Tag,
     roles: ['admin', 'staff'],
@@ -113,8 +113,8 @@ const Sidebar = () => {
               </span>
             )}
           </div>
-          <span className="admin-sidebar-eyebrow">Administration</span>
-          <h2 className="admin-sidebar-title">Manage Store</h2>
+          <span className="admin-sidebar-eyebrow">Hệ thống quản trị</span>
+          <h2 className="admin-sidebar-title">Quản lý cửa hàng</h2>
         </div>
 
         <nav className="admin-sidebar-nav">

@@ -173,35 +173,44 @@ exports.createOrder = async (req, res) => {
 
     if (couponCode) {
       const cleanCode = couponCode.trim().toUpperCase();
-      const coupon = await Coupon.findOne({
-        code: cleanCode,
-        isActive: true,
-      });
+      const coupon = await Coupon.findOne({ code: cleanCode });
 
       if (coupon) {
         const now = new Date();
-        const isValidDate = (!coupon.startDate || new Date(coupon.startDate) <= now) &&
-                            (!coupon.endDate || new Date(coupon.endDate) >= now);
+        const isValidDate = !coupon.expiryDate || new Date(coupon.expiryDate) >= now;
         const meetsMinOrder = !coupon.minOrderValue || itemsPrice >= coupon.minOrderValue;
 
-        if (isValidDate && meetsMinOrder) {
+        // Kiểm tra xem khách hàng đã từng dùng mã này chưa
+        const userDoc = await User.findById(req.user._id);
+        const usedCoupons = userDoc?.usedCoupons || [];
+        const isAlreadyUsed = usedCoupons.some(
+          (item) => item.toString() === coupon._id.toString() || item.toString() === cleanCode
+        );
+
+        // Kiểm tra giới hạn lượt dùng trên toàn hệ thống
+        const currentUsedCount = await Order.countDocuments({
+          'coupon.code': cleanCode,
+          status: { $ne: 'Cancelled' },
+        });
+        const hasUsageLeft =
+          coupon.usageLimit === null ||
+          coupon.usageLimit === undefined ||
+          coupon.usageLimit <= 0 ||
+          currentUsedCount < coupon.usageLimit;
+
+        if (isValidDate && meetsMinOrder && !isAlreadyUsed && hasUsageLeft) {
           if (coupon.discountType === 'percentage') {
             discountAmount = Math.round((itemsPrice * coupon.discountValue) / 100);
-            if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
-              discountAmount = coupon.maxDiscount;
-            }
           } else {
-            discountAmount = coupon.discountValue;
+            discountAmount = Math.min(coupon.discountValue, itemsPrice);
           }
           appliedCoupon = { code: cleanCode, discountAmount };
-          // Cập nhật lượt dùng
-          coupon.usedCount = (coupon.usedCount || 0) + 1;
-          await coupon.save();
 
-          // Lưu vào usedCoupons của user
+          // Lưu vào usedCoupons của user và tăng usedCount của coupon
           await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { usedCoupons: coupon._id },
           });
+          await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
         }
       }
     }

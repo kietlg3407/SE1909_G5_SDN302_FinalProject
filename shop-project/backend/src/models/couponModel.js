@@ -84,6 +84,11 @@ const couponSchema = new mongoose.Schema(
       },
       default: null,
     },
+    usedCount: {
+      type: Number,
+      min: [0, 'Used count must be non-negative'],
+      default: 0,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
