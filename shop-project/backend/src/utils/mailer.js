@@ -1,17 +1,19 @@
 const nodemailer = require('nodemailer');
 
-const hasSmtpConfig = () => Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const APP_PASSWORD_PLACEHOLDER = 'your_gmail_app_password_16_chars';
+
+const hasSmtpConfig = () => {
+  const pass = (process.env.EMAIL_PASS || '').replace(/\s/g, '');
+  return Boolean(process.env.EMAIL_USER && pass && pass !== APP_PASSWORD_PLACEHOLDER);
+};
 
 const createTransporter = () => {
   if (!hasSmtpConfig()) {
     return nodemailer.createTransport({ jsonTransport: true });
   }
 
-  const port = Number(process.env.EMAIL_PORT || 587);
   return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port,
-    secure: port === 465 || process.env.EMAIL_SECURE === 'true',
+    service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER.trim(),
       pass: process.env.EMAIL_PASS.replace(/\s/g, ''),

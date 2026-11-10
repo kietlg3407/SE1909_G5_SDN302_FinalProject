@@ -41,7 +41,7 @@ npm install
 npm start
 ```
 
-Điền `MONGO_URI`, `JWT_SECRET`, `CLIENT_URL` và, nếu muốn gửi email thật, `EMAIL_USER` cùng `EMAIL_PASS`. API mặc định lắng nghe cổng 5000. Swagger UI: `http://localhost:5000/api-docs`.
+Điền `MONGO_URI`, `JWT_SECRET` và `CLIENT_URL`. `EMAIL_USER` trong file mẫu là `baolgce191178@gmail.com`. Thay `EMAIL_PASS` bằng Gmail App Password rồi mới gửi được email thật. API mặc định lắng nghe cổng 5000. Swagger UI: `http://localhost:5000/api-docs`.
 
 Frontend:
 
@@ -56,17 +56,17 @@ npm run dev
 
 ## Forgot password environment
 
-Copy `shop-project/backend/.env.example` to `shop-project/backend/.env`. These variables send the reset email:
+Copy `shop-project/backend/.env.example` to `shop-project/backend/.env`. `.env` is listed in `.gitignore` and must not be committed. `EMAIL_PASS` must be a Gmail App Password, never the normal Gmail password, and the real value must never be committed. The example file keeps the placeholder `your_gmail_app_password_16_chars`.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `EMAIL_USER` | Yes, for real email | SMTP username (Gmail address) |
-| `EMAIL_PASS` | Yes, for real email | SMTP password (Gmail App Password) |
-| `EMAIL_HOST` | No | SMTP host, default `smtp.gmail.com` |
-| `EMAIL_PORT` | No | SMTP port, default `587` |
+| `EMAIL_USER` | Set in the example | Gmail address used to send mail: `baolgce191178@gmail.com` |
+| `EMAIL_PASS` | Yes, for real email | Gmail App Password (16 characters). Leave the placeholder to skip real delivery |
+| `EMAIL_HOST` | No | `smtp.gmail.com`. The mailer uses Nodemailer `service: 'gmail'` (SMTP port 465, secure) |
+| `EMAIL_PORT` | No | `465` |
 | `EMAIL_FROM` | No | From address, defaults to `EMAIL_USER` |
 | `CLIENT_URL` | Yes | Frontend origin used in the reset link, e.g. `http://localhost:5173` |
 | `JWT_SECRET` | Yes | Existing login token secret |
 | `MONGO_URI` | Yes | Existing database connection |
 
-If `EMAIL_USER` or `EMAIL_PASS` is empty outside production, the API does not send mail. It still returns the same success message and prints the reset link in the server log so the flow can be tested without SMTP. The response never says whether the email is registered. Reset tokens are stored as a SHA-256 hash, expire after 15 minutes, and are deleted after a successful reset. The new password is hashed by the same User pre-save hook used at registration.
+If `EMAIL_PASS` is empty or still the placeholder, the API does not send mail. It still returns the same success message and prints the reset link in the server log outside production. The response never says whether the email is registered. Reset tokens are stored as a SHA-256 hash, expire after 15 minutes, and are deleted after a successful reset. The new password is hashed by the same User pre-save hook used at registration.
