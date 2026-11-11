@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['customer', 'staff', 'admin'], default: 'customer' },
     isActive: { type: Boolean, default: true },
     passwordChangedAt: { type: Date },
+    passwordResetToken: { type: String, select: false, index: true },
+    passwordResetExpires: { type: Date, select: false },
     addresses: [addressSchema],
     usedCoupons: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Coupon' }],
   },

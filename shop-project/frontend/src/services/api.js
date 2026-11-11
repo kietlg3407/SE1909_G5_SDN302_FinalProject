@@ -54,11 +54,15 @@ api.interceptors.response.use(
 
       if (typeof window !== 'undefined') {
         const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        const isLoginPage = window.location.pathname === '/login';
+        const path = window.location.pathname;
+        const isPublicAuthPage =
+          path === '/login' ||
+          path === '/forgot-password' ||
+          path.startsWith('/reset-password');
 
         window.dispatchEvent(new CustomEvent('api:unauthorized'));
 
-        if (!isLoginPage) {
+        if (!isPublicAuthPage) {
           const loginUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
           window.location.assign(loginUrl);
         }
