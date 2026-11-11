@@ -28,6 +28,6 @@ describe('OpenAPI covers every registered route', () => {
   test('committed openapi.yaml matches the served spec', () => {
     const fileSpec = YAML.parse(fs.readFileSync(path.join(__dirname, '../openapi.yaml'), 'utf8'));
     expect(operationsOf(fileSpec)).toEqual(documented);
-    expect(fileSpec.info.description.trim()).toBe(introduction);
+    expect(fileSpec.info.description.replace(/\r\n/g, '\n').trim()).toBe(introduction.replace(/\r\n/g, '\n').trim());
   });
 });
