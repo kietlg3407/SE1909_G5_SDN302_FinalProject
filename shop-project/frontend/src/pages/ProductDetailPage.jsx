@@ -611,46 +611,20 @@ const ProductDetailPage = () => {
             </button>
           </div>
 
-          {/* Price & Favorite Box */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-              <span style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a' }}>
-                {formatCurrency(displayPrice)}
+          {/* Price Box */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', padding: '16px 0', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a' }}>
+              {formatCurrency(displayPrice)}
+            </span>
+            {hasDiscount && (
+              <span style={{ fontSize: '18px', color: '#94a3b8', textDecoration: 'line-through' }}>
+                {formatCurrency(product.originalPrice)}
               </span>
-              {hasDiscount && (
-                <span style={{ fontSize: '18px', color: '#94a3b8', textDecoration: 'line-through' }}>
-                  {formatCurrency(product.originalPrice)}
-                </span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleToggleFavorite}
-              disabled={togglingFavorite}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 18px',
-                borderRadius: '10px',
-                border: inWishlist ? '1px solid #fecaca' : '1px solid #cbd5e1',
-                background: inWishlist ? '#fef2f2' : '#ffffff',
-                color: inWishlist ? '#ef4444' : '#334155',
-                fontWeight: 700,
-                fontSize: '14px',
-                cursor: togglingFavorite ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              }}
-            >
-              <Heart size={18} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
-              <span>{inWishlist ? 'Đã Yêu Thích' : 'Thêm Vào Yêu Thích'}</span>
-            </button>
+            )}
           </div>
 
           {/* Purchase Actions: quantity + add to cart + wishlist */}
-          {!isOutOfStock && (
+          {!isOutOfStock ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '10px', overflow: 'hidden' }}>
                 <button
@@ -692,16 +666,42 @@ const ProductDetailPage = () => {
               <button
                 type="button"
                 onClick={handleToggleFavorite}
+                disabled={togglingFavorite}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: '8px',
                   padding: '12px 20px', borderRadius: '10px',
                   border: inWishlist ? '1px solid #fecaca' : '1px solid #cbd5e1',
                   background: inWishlist ? '#fef2f2' : '#fff',
                   color: inWishlist ? '#ef4444' : '#334155',
-                  fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+                  fontWeight: 700, fontSize: '14px',
+                  cursor: togglingFavorite ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                 }}
               >
-                <Heart size={17} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
+                <Heart size={18} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
+                <span>{inWishlist ? 'Đã yêu thích' : 'Yêu thích'}</span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                disabled={togglingFavorite}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px',
+                  padding: '12px 20px', borderRadius: '10px',
+                  border: inWishlist ? '1px solid #fecaca' : '1px solid #cbd5e1',
+                  background: inWishlist ? '#fef2f2' : '#fff',
+                  color: inWishlist ? '#ef4444' : '#334155',
+                  fontWeight: 700, fontSize: '14px',
+                  cursor: togglingFavorite ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                <Heart size={18} fill={inWishlist ? '#ef4444' : 'none'} color={inWishlist ? '#ef4444' : '#64748b'} />
                 <span>{inWishlist ? 'Đã yêu thích' : 'Yêu thích'}</span>
               </button>
             </div>

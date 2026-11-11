@@ -31,6 +31,9 @@ dist/
 dist-ssr/
 build/
 *.local
+uploads/
+**/uploads/*
+!**/uploads/.gitkeep
 
 # Logs - may contain sensitive info
 logs/
