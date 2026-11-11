@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { MapPin, CreditCard, Tag, CheckCircle2, ArrowLeft, Truck, AlertCircle } from 'lucide-react';
+import { MapPin, CreditCard, Tag, CheckCircle2, ArrowLeft, Truck, AlertCircle, Ticket, X } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -31,6 +31,9 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Load user saved addresses
@@ -50,12 +53,29 @@ const CheckoutPage = () => {
             state: defaultAddr.state || '',
           });
         }
-      } catch (err) {
+      } catch {
         // Fallback to manual entry
       }
     };
     fetchAddresses();
   }, [user]);
+
+  // Load active coupons from database
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        setLoadingCoupons(true);
+        const res = await api.get('/api/coupons?limit=50');
+        const list = res.data?.data?.coupons || res.data?.coupons || [];
+        setAvailableCoupons(list);
+      } catch (err) {
+        console.error('Không thể tải danh sách mã giảm giá', err);
+      } finally {
+        setLoadingCoupons(false);
+      }
+    };
+    fetchCoupons();
+  }, []);
 
   const handleSelectSavedAddress = (addr) => {
     setSelectedAddressId(addr._id);
@@ -71,42 +91,55 @@ const CheckoutPage = () => {
   const FREE_SHIPPING_THRESHOLD = 500000;
   const shippingFee = cartTotal >= FREE_SHIPPING_THRESHOLD || cartCount === 0 ? 0 : 30000;
 
-  // Apply Coupon
-  const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    if (!couponCode.trim()) return;
+  // Apply Coupon via Backend API
+  const handleApplyCoupon = async (codeOverride) => {
+    const code = (typeof codeOverride === 'string' ? codeOverride : couponCode).trim().toUpperCase();
+    if (!code) {
+      toast.error('Vui lòng nhập hoặc chọn mã giảm giá');
+      return;
+    }
 
     try {
-      const code = couponCode.trim().toUpperCase();
-      // Test with coupon endpoint or calculate client side
-      if (code === 'WELCOME10') {
-        const discount = Math.round(cartTotal * 0.1);
-        setAppliedCoupon({ code, discountAmount: discount, description: 'Giảm 10% đơn hàng' });
-        toast.success('Áp dụng mã WELCOME10 thành công (-10%)');
-      } else {
-        // Query coupon API
-        const res = await api.get(`/api/coupons`);
-        const found = res.data?.coupons?.find((c) => c.code === code && c.isActive);
-        if (found) {
-          let discount = 0;
-          if (found.discountType === 'percentage') {
-            discount = Math.round((cartTotal * found.discountValue) / 100);
-            if (found.maxDiscount && discount > found.maxDiscount) discount = found.maxDiscount;
-          } else {
-            discount = found.discountValue;
-          }
-          setAppliedCoupon({ code, discountAmount: discount, description: `Giảm ${formatCurrency(discount)}` });
-          toast.success(`Áp dụng mã ${code} thành công`);
-        } else {
-          toast.error('Mã giảm giá không tồn tại hoặc đã hết hạn');
-        }
+      setApplyingCoupon(true);
+      const res = await api.post('/api/coupons/apply', {
+        code,
+        orderAmount: cartTotal,
+      });
+
+      if (res.data?.coupon) {
+        const c = res.data.coupon;
+        setAppliedCoupon({
+          code: c.code,
+          discountType: c.discountType,
+          discountValue: c.discountValue,
+          discountAmount: res.data.discountAmount,
+          minOrderValue: c.minOrderValue,
+        });
+        setCouponCode(c.code);
+        toast.success(res.data.message || `Áp dụng mã ${c.code} thành công`);
       }
-    } catch {
-      toast.error('Lỗi khi kiểm tra mã giảm giá');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Không thể áp dụng mã giảm giá';
+      toast.error(msg);
+    } finally {
+      setApplyingCoupon(false);
     }
   };
 
-  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  // Remove Applied Coupon
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    toast.success('Đã gỡ mã giảm giá');
+  };
+
+  // Recalculate discount based on current cartTotal and coupon specifications
+  const discountAmount = appliedCoupon
+    ? (appliedCoupon.discountType === 'percentage'
+        ? Math.round((cartTotal * appliedCoupon.discountValue) / 100)
+        : Math.min(appliedCoupon.discountValue || appliedCoupon.discountAmount, cartTotal))
+    : 0;
+
   const grandTotal = Math.max(0, cartTotal + shippingFee - discountAmount);
 
   // Submit Order
@@ -127,7 +160,7 @@ const CheckoutPage = () => {
           state: addressForm.state || addressForm.city,
         },
         paymentMethod,
-        couponCode: appliedCoupon?.code,
+        couponCode: appliedCoupon?.code || undefined,
         shippingPrice: shippingFee,
       };
 
@@ -359,7 +392,7 @@ const CheckoutPage = () => {
 
           <div style={{ maxHeight: '240px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
             {cart.items.map((item) => (
-              <div key={item.product?._id || item._id} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+              <div key={`${item.product?._id || item._id}-${item.variant || 'base'}`} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
                 <img
                   src={item.product?.images?.[0] || 'https://placehold.co/80x100?text=Item'}
                   alt={item.product?.name}
@@ -369,6 +402,11 @@ const CheckoutPage = () => {
                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {item.product?.name}
                   </p>
+                  {item.variantLabel && (
+                    <p style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, margin: 0 }}>
+                      Phân loại: {item.variantLabel}
+                    </p>
+                  )}
                   <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>
                     {formatCurrency(item.product?.price || item.price)} x {item.quantity}
                   </p>
@@ -380,32 +418,308 @@ const CheckoutPage = () => {
             ))}
           </div>
 
-          {/* Coupon Code Input */}
+          {/* Coupon Code Section */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-              Mã giảm giá / Khuyến mãi
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                <Ticket size={16} color="#7c3aed" /> Mã giảm giá / Khuyến mãi
+              </label>
+              {availableCoupons.length > 0 && (
+                <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600 }}>
+                  {availableCoupons.length} mã trong hệ thống
+                </span>
+              )}
+            </div>
+
+            {/* Input & Apply Button */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
               <input
                 type="text"
-                placeholder="Nhập WELCOME10..."
+                placeholder="Nhập mã ưu đãi..."
                 value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                style={{ flex: 1, padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', textTransform: 'uppercase', fontSize: '13px' }}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleApplyCoupon();
+                  }
+                }}
+                disabled={applyingCoupon}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  textTransform: 'uppercase',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '0.5px',
+                }}
               />
               <button
                 type="button"
-                onClick={handleApplyCoupon}
+                onClick={() => handleApplyCoupon()}
+                disabled={applyingCoupon || !couponCode.trim()}
                 className="btn-primary"
-                style={{ padding: '9px 16px', fontSize: '13px' }}
+                style={{ padding: '9px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
               >
-                Áp dụng
+                {applyingCoupon ? 'Đang kiểm tra...' : 'Áp dụng'}
               </button>
             </div>
+
+            {/* Applied Coupon Info Box */}
             {appliedCoupon && (
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#059669', background: '#ecfdf5', padding: '6px 10px', borderRadius: '6px' }}>
-                <CheckCircle2 size={14} />
-                <span>Mã <strong>{appliedCoupon.code}</strong>: -{formatCurrency(appliedCoupon.discountAmount)}</span>
+              <div
+                style={{
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  fontSize: '13px',
+                  color: '#065f46',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} color="#059669" />
+                  <span>
+                    Đang dùng mã <strong>{appliedCoupon.code}</strong> (-{formatCurrency(discountAmount)})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '2px',
+                  }}
+                  title="Gỡ mã này"
+                >
+                  <X size={14} /> Gỡ mã
+                </button>
+              </div>
+            )}
+
+            {/* Available Coupons list from Database */}
+            {loadingCoupons ? (
+              <div style={{ fontSize: '12px', color: '#64748b', padding: '8px 0' }}>Đang tải danh sách mã ưu đãi...</div>
+            ) : availableCoupons.length > 0 ? (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>
+                  Danh sách mã ưu đãi có sẵn:
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    maxHeight: '190px',
+                    overflowY: 'auto',
+                    paddingRight: '4px',
+                  }}
+                >
+                  {availableCoupons.map((c) => {
+                    const isApplied = appliedCoupon?.code === c.code;
+                    const isExpired = c.isExpired ?? (c.expiryDate && new Date(c.expiryDate).getTime() < Date.now());
+                    const isLimitReached = c.isLimitReached ?? (c.usageLimit !== null && c.usageLimit !== undefined && c.usageLimit > 0 && (c.usedCount || 0) >= c.usageLimit);
+                    const isUsable = !isExpired && !isLimitReached;
+                    const isEligible = isUsable && (!c.minOrderValue || cartTotal >= c.minOrderValue);
+
+                    const discountText =
+                      c.discountType === 'percentage'
+                        ? `Giảm ${c.discountValue}%`
+                        : `Giảm ${formatCurrency(c.discountValue)}`;
+                    const minOrderText =
+                      c.minOrderValue > 0
+                        ? `Đơn từ ${formatCurrency(c.minOrderValue)}`
+                        : 'Không giới hạn đơn tối thiểu';
+
+                    const borderStyle = isApplied
+                      ? '1.5px solid #10b981'
+                      : isExpired
+                      ? '1px solid #fecaca'
+                      : isLimitReached
+                      ? '1px solid #fde68a'
+                      : isEligible
+                      ? '1px dashed #7c3aed'
+                      : '1px solid #e2e8f0';
+
+                    const bgStyle = isApplied
+                      ? '#f0fdf4'
+                      : isExpired
+                      ? '#fef2f2'
+                      : isLimitReached
+                      ? '#fffbeb'
+                      : isEligible
+                      ? '#faf5ff'
+                      : '#f8fafc';
+
+                    return (
+                      <div
+                        key={c._id || c.code}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: borderStyle,
+                          background: bgStyle,
+                          opacity: isUsable ? (isEligible ? 1 : 0.8) : 0.65,
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                            <span
+                              style={{
+                                fontWeight: 800,
+                                fontSize: '13px',
+                                color: isApplied ? '#059669' : isExpired ? '#b91c1c' : isLimitReached ? '#b45309' : '#6d28d9',
+                                background: isApplied ? '#dcfce7' : isExpired ? '#fee2e2' : isLimitReached ? '#fef3c7' : '#ede9fe',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                letterSpacing: '0.5px',
+                              }}
+                            >
+                              {c.code}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
+                              {discountText}
+                            </span>
+
+                            {/* Status badges */}
+                            {isExpired && (
+                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#b91c1c', background: '#fee2e2', padding: '1px 6px', borderRadius: '4px' }}>
+                                Đã hết hạn
+                              </span>
+                            )}
+                            {isLimitReached && (
+                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', background: '#fef3c7', padding: '1px 6px', borderRadius: '4px' }}>
+                                Hết lượt dùng
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>
+                            {minOrderText}
+                            {c.expiryDate && (
+                              <span> • HSD: {new Date(c.expiryDate).toLocaleDateString('vi-VN')}</span>
+                            )}
+                            {c.usageLimit && (
+                              <span> • Đã dùng: {c.usedCount || 0}/{c.usageLimit}</span>
+                            )}
+                          </div>
+
+                          {/* Explanatory notes */}
+                          {isExpired ? (
+                            <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '2px', fontWeight: 600 }}>
+                              • Mã giảm giá đã hết hạn sử dụng
+                            </div>
+                          ) : isLimitReached ? (
+                            <div style={{ fontSize: '11px', color: '#b45309', marginTop: '2px', fontWeight: 600 }}>
+                              • Mã giảm giá đã hết lượt sử dụng ({c.usedCount || 0}/{c.usageLimit} lượt)
+                            </div>
+                          ) : !isEligible ? (
+                            <div style={{ fontSize: '11px', color: '#e11d48', marginTop: '2px' }}>
+                              Cần mua thêm {formatCurrency(c.minOrderValue - cartTotal)} để áp dụng
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div>
+                          {isApplied ? (
+                            <button
+                              type="button"
+                              onClick={handleRemoveCoupon}
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#ef4444',
+                                background: '#fee2e2',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Đang dùng
+                            </button>
+                          ) : isExpired ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#94a3b8',
+                                background: '#e2e8f0',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'not-allowed',
+                              }}
+                            >
+                              Đã hết hạn
+                            </button>
+                          ) : isLimitReached ? (
+                            <button
+                              type="button"
+                              disabled
+                              style={{
+                                padding: '5px 10px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#94a3b8',
+                                background: '#e2e8f0',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'not-allowed',
+                              }}
+                            >
+                              Hết lượt
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={!isEligible || applyingCoupon}
+                              onClick={() => handleApplyCoupon(c.code)}
+                              style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: isEligible ? '#fff' : '#94a3b8',
+                                background: isEligible ? '#7c3aed' : '#e2e8f0',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: isEligible ? 'pointer' : 'not-allowed',
+                                transition: 'background 0.2s',
+                              }}
+                            >
+                              Áp dụng
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', marginTop: '6px' }}>
+                Hiện không có mã giảm giá nào trong hệ thống.
               </div>
             )}
           </div>
@@ -427,7 +741,7 @@ const CheckoutPage = () => {
 
           {discountAmount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', color: '#059669' }}>
-              <span>Giảm giá khuyến mãi</span>
+              <span>Giảm giá khuyến mãi ({appliedCoupon?.code})</span>
               <span style={{ fontWeight: 600 }}>-{formatCurrency(discountAmount)}</span>
             </div>
           )}
@@ -455,4 +769,3 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
-

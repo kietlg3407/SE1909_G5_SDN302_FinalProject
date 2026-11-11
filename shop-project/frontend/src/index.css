@@ -322,6 +322,7 @@ button {
   font-weight: 500;
 }
 
+.desktop-nav,
 .nav-links {
   display: flex;
   gap: 28px;
@@ -1451,6 +1452,7 @@ button {
 }
 
 @media (max-width: 768px) {
+  .desktop-nav,
   .nav-links {
     display: none;
   }

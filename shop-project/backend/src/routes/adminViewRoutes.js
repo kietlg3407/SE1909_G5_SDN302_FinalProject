@@ -13,7 +13,7 @@ const {
 const { requireAdminView } = require('../middlewares/adminViewMiddleware');
 
 // Admin Logout Route
-router.get('/logout', handleLogout);
+router.post('/logout', handleLogout);
 
 // Protected Admin Dashboard Routes (yêu cầu quyền Admin từ phiên đăng nhập chung)
 router.use(requireAdminView);

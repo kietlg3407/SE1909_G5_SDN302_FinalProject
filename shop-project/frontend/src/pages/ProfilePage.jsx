@@ -50,12 +50,13 @@ const ProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Kiểm tra định dạng và dung lượng (< 5MB)
-    if (!file.type.startsWith('image/')) {
+    // Kiểm tra định dạng và dung lượng (<= 2MB)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
       return toast.error('Vui lòng chỉ chọn tệp hình ảnh (JPG, PNG, WEBP)');
     }
-    if (file.size > 5 * 1024 * 1024) {
-      return toast.error('Kích thước ảnh tối đa là 5MB');
+    if (file.size > 2 * 1024 * 1024) {
+      return toast.error('Kích thước ảnh tối đa là 2MB');
     }
 
     const formData = new FormData();

@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+const productVariantSchema = new mongoose.Schema(
+  {
+    sku: { type: String, trim: true, default: '' },
+    size: { type: String, trim: true, default: '' },
+    color: { type: String, trim: true, default: '' },
+    price: { type: Number, min: [0, 'Giá biến thể không được âm'], default: null },
+    stock: { type: Number, required: true, min: [0, 'Tồn kho biến thể không được âm'], default: 0 },
+    isActive: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: {
@@ -41,6 +53,10 @@ const productSchema = new mongoose.Schema(
     },
     images: {
       type: [String],
+      default: [],
+    },
+    variants: {
+      type: [productVariantSchema],
       default: [],
     },
     rating: {

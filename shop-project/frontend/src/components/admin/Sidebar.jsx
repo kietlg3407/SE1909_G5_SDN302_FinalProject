@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
-import { BarChart3, Menu, Package, Tag, Users, X, Shield, UserCheck } from 'lucide-react';
+import { BarChart3, Boxes, Menu, Package, Tag, Users, X, Shield, UserCheck, Star, MessageSquare, ClipboardList } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const navigationItems = [
   {
-    label: 'Dashboard Statistics',
+    label: 'Thống kê Dashboard',
     path: '/admin/dashboard',
     icon: BarChart3,
     roles: ['admin', 'staff'],
   },
   {
-    label: 'User Management',
+    label: 'Quản lý người dùng',
     path: '/admin/users',
     icon: Users,
     roles: ['admin'], // Chỉ Admin mới được hiển thị
   },
   {
-    label: 'Coupon/Promotion Management',
+    label: 'Quản lý khuyến mãi & mã giảm giá',
     path: '/admin/coupons',
     icon: Tag,
     roles: ['admin', 'staff'],
@@ -26,6 +26,30 @@ const navigationItems = [
     label: 'Quản lý sản phẩm',
     path: '/admin/products',
     icon: Package,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Danh mục, thương hiệu & biến thể',
+    path: '/admin/classifications',
+    icon: Boxes,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Quản lý đánh giá',
+    path: '/admin/reviews',
+    icon: Star,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Quản lý bình luận',
+    path: '/admin/comments',
+    icon: MessageSquare,
+    roles: ['admin', 'staff'],
+  },
+  {
+    label: 'Xử lý đơn hàng',
+    path: '/admin/orders',
+    icon: ClipboardList,
     roles: ['admin', 'staff'],
   },
 ];
@@ -89,8 +113,8 @@ const Sidebar = () => {
               </span>
             )}
           </div>
-          <span className="admin-sidebar-eyebrow">Administration</span>
-          <h2 className="admin-sidebar-title">Manage Store</h2>
+          <span className="admin-sidebar-eyebrow">Hệ thống quản trị</span>
+          <h2 className="admin-sidebar-title">Quản lý cửa hàng</h2>
         </div>
 
         <nav className="admin-sidebar-nav">

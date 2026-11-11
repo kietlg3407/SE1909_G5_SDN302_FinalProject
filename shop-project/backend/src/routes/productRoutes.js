@@ -7,7 +7,9 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
-  uploadProductImages,
+  createProductVariant,
+  updateProductVariant,
+  deleteProductVariant,
 } = require('../controllers/productController');
 const { protect, isStaffOrAdmin } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
@@ -35,6 +37,9 @@ router.get('/', optionalAuth, getProducts);
 router.get('/:id', getProductById);
 
 // Các endpoint yêu cầu quyền Admin hoặc Staff
+router.post('/:id/variants', protect, isStaffOrAdmin, createProductVariant);
+router.put('/:id/variants/:variantId', protect, isStaffOrAdmin, updateProductVariant);
+router.delete('/:id/variants/:variantId', protect, isStaffOrAdmin, deleteProductVariant);
 router.post('/', protect, isStaffOrAdmin, createProduct);
 router.put('/:id', protect, isStaffOrAdmin, updateProduct);
 router.delete('/:id', protect, isStaffOrAdmin, deleteProduct);

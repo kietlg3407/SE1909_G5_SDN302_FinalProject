@@ -74,6 +74,8 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
 
   // Data state
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -91,6 +93,26 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
   const [togglingId, setTogglingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const availableCategories = [...new Set([
+    ...(categories.length ? categories.map((item) => item.name) : CATEGORIES),
+    formData.category,
+  ].filter(Boolean))];
+  const availableBrands = [...new Set([
+    ...brands.map((item) => item.name),
+    formData.brand,
+    'CLOSET',
+  ].filter(Boolean))];
+
+  useEffect(() => {
+    Promise.all([api.get('/api/categories'), api.get('/api/brands')])
+      .then(([categoryResponse, brandResponse]) => {
+        setCategories(categoryResponse.data.records || []);
+        setBrands(brandResponse.data.records || []);
+      })
+      .catch((error) => {
+        toast.error(error.response?.data?.message || 'Không thể tải danh mục và thương hiệu');
+      });
+  }, []);
 
   // Synchronize local input when URL changes externally (e.g. browser back/forward)
   useEffect(() => {
@@ -515,7 +537,7 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                 }}
               >
                 <option value="all">Tất cả danh mục</option>
-                {CATEGORIES.map((cat) => (
+                {availableCategories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
@@ -963,7 +985,7 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                       background: '#fff',
                     }}
                   >
-                    {CATEGORIES.map((cat) => (
+                    {availableCategories.map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -973,13 +995,23 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                   <label htmlFor="product-brand" style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                     Thương hiệu
                   </label>
-                  <input
+                  <select
                     id="product-brand"
-                    type="text"
-                    placeholder="CLOSET"
                     value={formData.brand}
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                  />
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '14px',
+                      background: '#fff',
+                    }}
+                  >
+                    {availableBrands.map((brand) => (
+                      <option key={brand} value={brand}>{brand}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

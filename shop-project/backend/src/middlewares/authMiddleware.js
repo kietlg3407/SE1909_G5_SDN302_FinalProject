@@ -17,6 +17,21 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Không tìm thấy người dùng của phiên đăng nhập này' });
     }
 
+    if (req.user.isActive === false) {
+      return res.status(403).json({
+        message: 'Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động. Vui lòng liên hệ quản trị viên.',
+      });
+    }
+
+    if (
+      req.user.passwordChangedAt &&
+      decoded.iat * 1000 < new Date(req.user.passwordChangedAt).getTime()
+    ) {
+      return res.status(401).json({
+        message: 'Mật khẩu đã thay đổi, vui lòng đăng nhập lại',
+      });
+    }
+
     return next();
   } catch (error) {
     return res.status(401).json({ message: 'Token không hợp lệ hoặc đã hết hạn' });

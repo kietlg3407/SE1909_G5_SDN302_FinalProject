@@ -4,14 +4,22 @@ const jwt = require('jsonwebtoken');
 
 const validRoles = ['customer', 'staff', 'admin'];
 
+const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+};
+
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Helper to generate token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
-// [GET] /admin/logout
+// [POST] /admin/logout
 const handleLogout = (req, res) => {
-  res.clearCookie('admin_token');
+  res.clearCookie('admin_token', ADMIN_COOKIE_OPTIONS);
   const commonLoginUrl = process.env.CLIENT_URL ? `${process.env.CLIENT_URL}/login` : 'http://localhost:5173/login';
   return res.redirect(commonLoginUrl);
 };
@@ -57,8 +65,9 @@ const showUsers = async (req, res) => {
     const query = {};
 
     // 1. Search by name or email
-    if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), 'i');
+    if (typeof search === 'string' && search.trim()) {
+      const cleanSearch = search.trim().slice(0, 100);
+      const regex = new RegExp(escapeRegex(cleanSearch), 'i');
       query.$or = [{ name: regex }, { email: regex }];
     }
 
@@ -68,7 +77,7 @@ const showUsers = async (req, res) => {
     }
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
     const skip = (pageNum - 1) * limitNum;
 
     const totalUsers = await User.countDocuments(query);

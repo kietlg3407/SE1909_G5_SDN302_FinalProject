@@ -1,5 +1,6 @@
 const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
+const Order = require('../models/orderModel');
 
 const couponFields = [
   'code',
@@ -68,7 +69,7 @@ const validateSortParam = (sortBy) => {
 
 // Helper function to validate filter parameters
 const validateFilterParams = (status, discountType) => {
-  const validStatuses = ['active', 'expired'];
+  const validStatuses = ['active', 'expired', 'limit_reached'];
   const validDiscountTypes = ['percentage', 'fixed'];
 
   if (status && !validStatuses.includes(status)) {
@@ -93,9 +94,11 @@ const buildFilterQuery = (status, discountType) => {
   const query = {};
 
   if (status === 'active') {
-    query.expiryDate = { $gte: new Date() };
+    query.$or = [{ expiryDate: null }, { expiryDate: { $gte: new Date() } }];
   } else if (status === 'expired') {
     query.expiryDate = { $lt: new Date() };
+  } else if (status === 'limit_reached') {
+    query.usageLimit = { $gt: 0 };
   }
 
   if (discountType) {
@@ -306,11 +309,41 @@ const getAllCoupons = async (req, res) => {
     const totalCount = await Coupon.countDocuments(filterQuery);
 
     // Get paginated and sorted results
-    const coupons = await Coupon.find(filterQuery)
+    const rawCoupons = await Coupon.find(filterQuery)
       .sort(sortObj)
       .skip(skip)
       .limit(paginationValidation.limit)
       .populate('createdBy', 'name email');
+
+    // Đồng bộ số lượt đã dùng thực tế từ các đơn hàng không bị hủy
+    const couponCodes = rawCoupons.map((c) => c.code);
+    const orderCounts = await Order.aggregate([
+      { $match: { 'coupon.code': { $in: couponCodes }, status: { $ne: 'Cancelled' } } },
+      { $group: { _id: '$coupon.code', count: { $sum: 1 } } },
+    ]);
+    const countMap = {};
+    orderCounts.forEach((item) => {
+      countMap[item._id] = item.count;
+    });
+
+    let coupons = rawCoupons.map((coupon) => {
+      const c = coupon.toObject ? coupon.toObject() : { ...coupon };
+      c.usedCount = countMap[c.code] !== undefined ? countMap[c.code] : (c.usedCount || 0);
+      const isExpired = c.expiryDate && new Date(c.expiryDate).getTime() < Date.now();
+      const isLimitReached = c.usageLimit !== null && c.usageLimit !== undefined && c.usageLimit > 0 && c.usedCount >= c.usageLimit;
+      c.isExpired = !!isExpired;
+      c.isLimitReached = !!isLimitReached;
+      c.status = isExpired ? 'expired' : isLimitReached ? 'limit_reached' : 'active';
+      return c;
+    });
+
+    if (status === 'limit_reached') {
+      coupons = coupons.filter((c) => c.isLimitReached);
+    } else if (status === 'active') {
+      coupons = coupons.filter((c) => !c.isExpired && !c.isLimitReached);
+    } else if (status === 'expired') {
+      coupons = coupons.filter((c) => c.isExpired);
+    }
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(totalCount / paginationValidation.limit);
@@ -719,6 +752,20 @@ const applyCoupon = async (req, res) => {
     // Kiểm tra hạn sử dụng
     if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) {
       return res.status(400).json({ message: 'Mã giảm giá đã hết hạn sử dụng' });
+    }
+
+    // Kiểm tra giới hạn lượt dùng trên toàn hệ thống
+    const usedCount = await Order.countDocuments({
+      'coupon.code': coupon.code,
+      status: { $ne: 'Cancelled' },
+    });
+    if (
+      coupon.usageLimit !== null &&
+      coupon.usageLimit !== undefined &&
+      coupon.usageLimit > 0 &&
+      usedCount >= coupon.usageLimit
+    ) {
+      return res.status(400).json({ message: 'Mã giảm giá này đã hết lượt sử dụng' });
     }
 
     // Kiểm tra đơn hàng tối thiểu

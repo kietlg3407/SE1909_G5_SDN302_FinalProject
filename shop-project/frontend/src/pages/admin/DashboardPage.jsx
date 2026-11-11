@@ -24,6 +24,7 @@ import {
   Users,
 } from 'lucide-react';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 ChartJS.register(
   BarElement,
@@ -51,6 +52,31 @@ const formatCurrency = (value) =>
   });
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('vi-VN');
+
+const barValuePlugin = {
+  id: 'barValuePlugin',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    chart.data.datasets.forEach((dataset, datasetIndex) => {
+      const meta = chart.getDatasetMeta(datasetIndex);
+      if (!meta || !meta.visible) return;
+      meta.data.forEach((bar, index) => {
+        const val = dataset.data[index];
+        if (val === undefined || val === null) return;
+        const formatted =
+          index === 0 ? formatCurrency(val) : formatNumber(val);
+        ctx.save();
+        ctx.fillStyle = '#1e293b';
+        ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const yPos = Math.max(bar.y - 5, 14);
+        ctx.fillText(formatted, bar.x, yPos);
+        ctx.restore();
+      });
+    });
+  },
+};
 
 const getErrorMessage = (error) =>
   error.response?.data?.message ||
@@ -85,6 +111,13 @@ const getLocalCurrentMonthString = () => {
 const getLocalCurrentYearString = () => String(new Date().getFullYear());
 
 const DashboardPage = () => {
+  let user = null;
+  try {
+    const auth = useAuth();
+    user = auth?.user;
+  } catch {
+    user = null;
+  }
   const [stats, setStats] = useState(EMPTY_STATS);
   const [trendData, setTrendData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -197,6 +230,7 @@ const DashboardPage = () => {
           hoverBackgroundColor: ['#3730a3', '#1e40af', '#6d28d9', '#0d9488'],
           borderRadius: 8,
           maxBarThickness: 48,
+          minBarLength: 28,
         },
       ],
     }),
@@ -232,10 +266,12 @@ const DashboardPage = () => {
         padding: 10,
         callbacks: {
           label: (context) => {
+            const labels = ['Doanh thu', 'Đơn hàng', 'Người dùng hoạt động', 'Sản phẩm'];
+            const label = labels[context.dataIndex] || context.dataset.label || 'Giá trị';
             if (context.dataIndex === 0) {
               return ` Doanh thu: ${formatCurrency(context.raw)}`;
             }
-            return ` ${context.dataset.label || 'Giá trị'}: ${formatNumber(context.raw)}`;
+            return ` ${label}: ${formatNumber(context.raw)}`;
           },
         },
       },
@@ -244,6 +280,7 @@ const DashboardPage = () => {
       x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11 } } },
       y: {
         beginAtZero: true,
+        grace: '14%',
         grid: { color: '#e2e8f0' },
         ticks: { color: '#64748b', font: { size: 11 } },
       },
@@ -318,7 +355,26 @@ const DashboardPage = () => {
       <div className="dashboard-shell">
         <header className="dashboard-header">
           <div>
-            <div className="dashboard-eyebrow"><BarChart3 size={15} /> Tổng quan kinh doanh</div>
+            <div className="dashboard-eyebrow">
+              <BarChart3 size={15} /> Tổng quan kinh doanh
+              {user?.role && (
+                <span
+                  style={{
+                    marginLeft: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    background: user.role === 'admin' ? '#ede9fe' : '#e0f2fe',
+                    color: user.role === 'admin' ? '#6d28d9' : '#0369a1',
+                  }}
+                >
+                  {user.role === 'admin' ? 'Quản Trị Viên (Admin)' : 'Nhân Viên (Staff)'}
+                </span>
+              )}
+            </div>
             <h1>Dashboard điều hành</h1>
             <p>Theo dõi sức khỏe hoạt động của cửa hàng từ một nơi.</p>
           </div>
@@ -439,7 +495,9 @@ const DashboardPage = () => {
                   )}
                 </div>
 
-                <div className="dashboard-chart" data-testid="bar-chart-container"><Bar data={overviewData} options={chartOptions} /></div>
+                <div className="dashboard-chart" data-testid="bar-chart-container">
+                  <Bar data={overviewData} options={chartOptions} plugins={[barValuePlugin]} />
+                </div>
               </article>
               <article className="dashboard-card" data-testid="trend-chart-card">
                 <div className="dashboard-card-header"><div><h2>Xu hướng doanh thu</h2><p>Biến động theo dữ liệu backend</p></div><CircleDollarSign size={19} className="dashboard-card-icon" /></div>

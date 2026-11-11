@@ -18,6 +18,7 @@ const AdminReviewsPage = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [selectedStar, setSelectedStar] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -31,13 +32,15 @@ const AdminReviewsPage = () => {
   const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/api/reviews/admin', {
-        params: {
-          filter: activeTab,
-          page: currentPage,
-          limit: 10,
-        },
-      });
+      const params = {
+        filter: activeTab,
+        page: currentPage,
+        limit: 10,
+      };
+      if (selectedStar !== 'all') {
+        params.rating = selectedStar;
+      }
+      const res = await api.get('/api/reviews/admin', { params });
 
       if (res.data?.success) {
         setReviews(res.data.reviews || []);
@@ -49,7 +52,7 @@ const AdminReviewsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, currentPage]);
+  }, [activeTab, selectedStar, currentPage]);
 
   useEffect(() => {
     fetchReviews();
@@ -151,6 +154,53 @@ const AdminReviewsPage = () => {
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', fontSize: '13px', color: '#64748b' }}>
           Tổng số: <strong style={{ marginLeft: '4px', color: '#0f172a' }}>{totalReviews}</strong>
         </div>
+      </div>
+
+      {/* Star Filter Pills for Admin / Staff */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', padding: '10px 14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569', marginRight: '4px' }}>Lọc theo sao:</span>
+        <button
+          type="button"
+          onClick={() => { setSelectedStar('all'); setCurrentPage(1); }}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            border: selectedStar === 'all' ? '1px solid #2563eb' : '1px solid #cbd5e1',
+            background: selectedStar === 'all' ? '#eff6ff' : '#ffffff',
+            color: selectedStar === 'all' ? '#1d4ed8' : '#475569',
+          }}
+        >
+          Tất cả sao
+        </button>
+        {[5, 4, 3, 2, 1].map((s) => {
+          const isSelected = selectedStar === s;
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => { setSelectedStar(isSelected ? 'all' : s); setCurrentPage(1); }}
+              style={{
+                padding: '5px 12px',
+                borderRadius: '16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                border: isSelected ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                background: isSelected ? '#fffbeb' : '#ffffff',
+                color: isSelected ? '#b45309' : '#475569',
+              }}
+            >
+              <span>{s}</span>
+              <Star size={12} fill="#f59e0b" color="#f59e0b" />
+            </button>
+          );
+        })}
       </div>
 
       {/* Review List */}

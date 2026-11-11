@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
@@ -5,6 +6,12 @@ const jwt = require('jsonwebtoken');
 // Regex kiểm tra định dạng email và số điện thoại Việt Nam chuẩn
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^(0|\+84)(3|5|7|8|9)[0-9]{8}$/;
+
+const ADMIN_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+};
 
 // Tạo JWT Token có thời hạn 30 ngày
 const generateToken = (id) => {
@@ -18,10 +25,17 @@ const generateToken = (id) => {
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body || {};
 
-    // BR: Bắt buộc cung cấp đầy đủ thông tin
-    if (!name || !email || !password) {
+    // BR: Bắt buộc cung cấp đầy đủ thông tin và đúng kiểu chuỗi
+    if (
+      typeof name !== 'string' ||
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !name.trim() ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ họ tên, email và mật khẩu' });
     }
 
@@ -45,7 +59,7 @@ const registerUser = async (req, res) => {
     // BR: Email là duy nhất trong toàn hệ thống
     const userExists = await User.findOne({ email: cleanEmail });
     if (userExists) {
-      return res.status(400).json({ message: 'Email này đã được sử dụng' });
+      return res.status(409).json({ message: 'Email này đã được sử dụng' });
     }
 
     // BR: Tài khoản tự đăng ký luôn mặc định là customer (chống leo thang đặc quyền)
@@ -80,7 +94,11 @@ const registerUser = async (req, res) => {
       res.status(400).json({ message: 'Dữ liệu người dùng không hợp lệ' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error && error.code === 11000) {
+      return res.status(409).json({ message: 'Email này đã được sử dụng' });
+    }
+    console.error('[registerUser Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi đăng ký tài khoản' });
   }
 };
 
@@ -89,9 +107,14 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email || !password) {
+    if (
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      !email.trim() ||
+      !password
+    ) {
       return res.status(400).json({ message: 'Vui lòng nhập đầy đủ email và mật khẩu' });
     }
 
@@ -110,10 +133,11 @@ const loginUser = async (req, res) => {
       // Nếu là admin, lưu cookie để có thể truy cập song song Admin Dashboard (EJS)
       if (user.role === 'admin') {
         res.cookie('admin_token', token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
+          ...ADMIN_COOKIE_OPTIONS,
           maxAge: 7 * 24 * 60 * 60 * 1000,
         });
+      } else {
+        res.clearCookie('admin_token', ADMIN_COOKIE_OPTIONS);
       }
 
       res.json({
@@ -130,8 +154,17 @@ const loginUser = async (req, res) => {
       res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[loginUser Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi đăng nhập' });
   }
+};
+
+// @desc    Đăng xuất & xóa cookie admin
+// @route   POST /api/users/logout
+// @access  Public
+const logoutUser = (req, res) => {
+  res.clearCookie('admin_token', ADMIN_COOKIE_OPTIONS);
+  res.json({ message: 'Đăng xuất thành công' });
 };
 
 // =================== 2. USER PROFILE (HỒ SƠ CÁ NHÂN) ===================
@@ -148,7 +181,8 @@ const getUserProfile = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[getUserProfile Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi lấy thông tin cá nhân' });
   }
 };
 
@@ -163,7 +197,10 @@ const updateUserProfile = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
 
-    if (req.body.name) {
+    if (req.body && req.body.name !== undefined) {
+      if (typeof req.body.name !== 'string') {
+        return res.status(400).json({ message: 'Họ tên phải có độ dài từ 2 đến 100 ký tự' });
+      }
       const trimmedName = req.body.name.trim();
       if (trimmedName.length < 2 || trimmedName.length > 100) {
         return res.status(400).json({ message: 'Họ tên phải có độ dài từ 2 đến 100 ký tự' });
@@ -182,7 +219,8 @@ const updateUserProfile = async (req, res) => {
       token: generateToken(updatedUser._id),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[updateUserProfile Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi cập nhật thông tin cá nhân' });
   }
 };
 
@@ -191,8 +229,13 @@ const updateUserProfile = async (req, res) => {
 // @access  Private
 const changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
+    const { currentPassword, newPassword } = req.body || {};
+    if (
+      typeof currentPassword !== 'string' ||
+      typeof newPassword !== 'string' ||
+      !currentPassword.trim() ||
+      !newPassword.trim()
+    ) {
       return res.status(400).json({ message: 'Vui lòng cung cấp mật khẩu hiện tại và mật khẩu mới' });
     }
 
@@ -214,12 +257,29 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác' });
     }
 
+    const authHeader = req.headers.authorization;
+    const currentToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    const currentDecoded = currentToken ? jwt.decode(currentToken) : null;
+    if (currentDecoded?.iat) {
+      const waitMs = currentDecoded.iat * 1000 + 1005 - Date.now();
+      if (waitMs > 0 && waitMs <= 1100) {
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+    }
+
     user.password = newPassword;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
     await user.save();
 
-    res.json({ message: 'Đổi mật khẩu thành công' });
+    const token = generateToken(user._id);
+
+    res.json({
+      message: 'Đổi mật khẩu thành công',
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[changePassword Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi đổi mật khẩu' });
   }
 };
 
@@ -245,7 +305,8 @@ const uploadAvatar = async (req, res) => {
       avatarUrl: user.avatar,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[uploadAvatar Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi tải lên ảnh đại diện' });
   }
 };
 
@@ -267,7 +328,8 @@ const getAddresses = async (req, res) => {
       res.status(404).json({ message: 'Không tìm thấy người dùng' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[getAddresses Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi lấy danh sách địa chỉ' });
   }
 };
 
@@ -280,15 +342,28 @@ const addAddress = async (req, res) => {
       return res.status(403).json({ message: 'Tài khoản nhân viên hoặc quản trị viên không được sử dụng chức năng địa chỉ nhận hàng' });
     }
 
-    const { street, city, state, phone, isDefault } = req.body;
+    const { street, city, state, phone, isDefault } = req.body || {};
 
-    // BR-ADDR-01: Bắt buộc điền đủ thông tin
-    if (!street || !city || !state || !phone) {
+    if (
+      typeof street !== 'string' ||
+      typeof city !== 'string' ||
+      typeof state !== 'string' ||
+      typeof phone !== 'string'
+    ) {
+      return res.status(400).json({ message: 'Vui lòng điền đầy đủ: Số nhà/đường, Phường/Xã, Quận/Tỉnh, và Số điện thoại' });
+    }
+
+    const trimmedStreet = street.trim();
+    const trimmedCity = city.trim();
+    const trimmedState = state.trim();
+    const cleanPhone = phone.trim().replace(/\s/g, '');
+
+    // BR-ADDR-01: Bắt buộc điền đủ thông tin (sau khi đã trim)
+    if (!trimmedStreet || !trimmedCity || !trimmedState || !cleanPhone) {
       return res.status(400).json({ message: 'Vui lòng điền đầy đủ: Số nhà/đường, Phường/Xã, Quận/Tỉnh, và Số điện thoại' });
     }
 
     // BR-ADDR-01: Kiểm tra định dạng số điện thoại
-    const cleanPhone = phone.trim().replace(/\s/g, '');
     if (!PHONE_REGEX.test(cleanPhone)) {
       return res.status(400).json({ message: 'Số điện thoại không hợp lệ (yêu cầu 10 số, bắt đầu bằng đầu số VN 03, 05, 07, 08, 09)' });
     }
@@ -299,7 +374,7 @@ const addAddress = async (req, res) => {
     }
 
     // BR-ADDR-02: Địa chỉ đầu tiên luôn mặc định là default, hoặc người dùng tích chọn default
-    const shouldBeDefault = isDefault || user.addresses.length === 0;
+    const shouldBeDefault = isDefault === true || user.addresses.length === 0;
 
     if (shouldBeDefault) {
       user.addresses.forEach((addr) => {
@@ -308,9 +383,9 @@ const addAddress = async (req, res) => {
     }
 
     const newAddress = {
-      street: street.trim(),
-      city: city.trim(),
-      state: state.trim(),
+      street: trimmedStreet,
+      city: trimmedCity,
+      state: trimmedState,
       phone: cleanPhone,
       isDefault: shouldBeDefault,
     };
@@ -320,7 +395,8 @@ const addAddress = async (req, res) => {
 
     res.status(201).json(user.addresses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[addAddress Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi thêm địa chỉ' });
   }
 };
 
@@ -334,7 +410,11 @@ const updateAddress = async (req, res) => {
     }
 
     const { addressId } = req.params;
-    const { street, city, state, phone, isDefault } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(addressId)) {
+      return res.status(400).json({ message: 'ID địa chỉ không hợp lệ' });
+    }
+
+    const { street, city, state, phone, isDefault } = req.body || {};
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -346,20 +426,40 @@ const updateAddress = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy địa chỉ này' });
     }
 
-    if (phone) {
+    if (street !== undefined) {
+      if (typeof street !== 'string' || !street.trim()) {
+        return res.status(400).json({ message: 'Số nhà/đường không được để trống' });
+      }
+      address.street = street.trim();
+    }
+
+    if (city !== undefined) {
+      if (typeof city !== 'string' || !city.trim()) {
+        return res.status(400).json({ message: 'Phường/Xã không được để trống' });
+      }
+      address.city = city.trim();
+    }
+
+    if (state !== undefined) {
+      if (typeof state !== 'string' || !state.trim()) {
+        return res.status(400).json({ message: 'Quận/Tỉnh không được để trống' });
+      }
+      address.state = state.trim();
+    }
+
+    if (phone !== undefined) {
+      if (typeof phone !== 'string') {
+        return res.status(400).json({ message: 'Số điện thoại không hợp lệ' });
+      }
       const cleanPhone = phone.trim().replace(/\s/g, '');
-      if (!PHONE_REGEX.test(cleanPhone)) {
+      if (!cleanPhone || !PHONE_REGEX.test(cleanPhone)) {
         return res.status(400).json({ message: 'Số điện thoại không hợp lệ' });
       }
       address.phone = cleanPhone;
     }
 
-    if (street) address.street = street.trim();
-    if (city) address.city = city.trim();
-    if (state) address.state = state.trim();
-
     // BR-ADDR-02: Đảm bảo duy nhất 1 địa chỉ mặc định
-    if (isDefault) {
+    if (isDefault === true) {
       user.addresses.forEach((addr) => {
         addr.isDefault = addr._id.toString() === addressId;
       });
@@ -368,7 +468,8 @@ const updateAddress = async (req, res) => {
     await user.save();
     res.json(user.addresses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[updateAddress Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi cập nhật địa chỉ' });
   }
 };
 
@@ -382,6 +483,10 @@ const deleteAddress = async (req, res) => {
     }
 
     const { addressId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(addressId)) {
+      return res.status(400).json({ message: 'ID địa chỉ không hợp lệ' });
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -403,7 +508,8 @@ const deleteAddress = async (req, res) => {
     await user.save();
     res.json(user.addresses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[deleteAddress Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi xóa địa chỉ' });
   }
 };
 
@@ -417,6 +523,10 @@ const setDefaultAddress = async (req, res) => {
     }
 
     const { addressId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(addressId)) {
+      return res.status(400).json({ message: 'ID địa chỉ không hợp lệ' });
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
@@ -434,13 +544,15 @@ const setDefaultAddress = async (req, res) => {
     await user.save();
     res.json(user.addresses);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('[setDefaultAddress Error]:', error);
+    res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi đặt địa chỉ mặc định' });
   }
 };
 
 module.exports = {
   registerUser,
   loginUser,
+  logoutUser,
   getUserProfile,
   updateUserProfile,
   changePassword,

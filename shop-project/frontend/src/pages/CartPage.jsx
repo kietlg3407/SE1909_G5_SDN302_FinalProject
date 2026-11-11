@@ -84,12 +84,17 @@ const CartPage = () => {
           <div className="cart-items-list" style={{ divideY: '1px solid #f1f5f9' }}>
             {cart.items.map((item) => {
               const product = item.product || {};
-              const itemTotal = (product.price || item.price || 0) * item.quantity;
-              const maxStock = product.stock || 99;
+              const itemTotal = (item.price || product.price || 0) * item.quantity;
+              const variant = item.variant && product.variants
+                ? product.variants.find((v) => v._id?.toString() === item.variant?.toString())
+                : null;
+              const maxStock = variant ? variant.stock : (product.stock || 99);
+              const variantId = item.variant?._id || item.variant || null;
+              const rowKey = `${product._id || item._id}-${variantId || 'base'}`;
 
               return (
                 <div
-                  key={product._id || item._id}
+                  key={rowKey}
                   className="cart-item-row"
                   style={{ display: 'grid', gridTemplateColumns: '3fr 1.5fr 1.5fr 40px', padding: '20px', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}
                 >
@@ -106,9 +111,14 @@ const CartPage = () => {
                       <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#0f172a', margin: '0 0 4px' }}>
                         {product.name || 'Sản phẩm'}
                       </h3>
+                      {item.variantLabel && (
+                        <p style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, margin: '0 0 4px' }}>
+                          Phân loại: {item.variantLabel}
+                        </p>
+                      )}
                       <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 6px' }}>{product.category || 'Thời trang'}</p>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-                        {formatCurrency(product.price || item.price)}
+                        {formatCurrency(item.price || product.price)}
                       </div>
                     </div>
                   </div>
@@ -118,7 +128,7 @@ const CartPage = () => {
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
                       <button
                         type="button"
-                        onClick={() => updateQuantity(product._id, item.quantity - 1)}
+                        onClick={() => updateQuantity(product._id, item.quantity - 1, variantId)}
                         style={{ padding: '6px 10px', background: '#f8fafc', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                         aria-label="Giảm số lượng"
                       >
@@ -130,7 +140,7 @@ const CartPage = () => {
                       <button
                         type="button"
                         disabled={item.quantity >= maxStock}
-                        onClick={() => updateQuantity(product._id, item.quantity + 1)}
+                        onClick={() => updateQuantity(product._id, item.quantity + 1, variantId)}
                         style={{ padding: '6px 10px', background: '#f8fafc', border: 'none', cursor: item.quantity >= maxStock ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', opacity: item.quantity >= maxStock ? 0.4 : 1 }}
                         aria-label="Tăng số lượng"
                       >
@@ -148,7 +158,7 @@ const CartPage = () => {
                   <div style={{ textAlign: 'right' }}>
                     <button
                       type="button"
-                      onClick={() => removeFromCart(product._id)}
+                      onClick={() => removeFromCart(product._id, variantId)}
                       style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px' }}
                       title="Xóa khỏi giỏ hàng"
                       aria-label="Xóa"

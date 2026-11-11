@@ -1,3 +1,4 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
@@ -23,6 +24,11 @@ const connectDB = async () => {
   }
 
   try {
+    if (connectionUri.startsWith('mongodb+srv://')) {
+      try {
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+      } catch (_) {}
+    }
     await mongoose.connect(connectionUri);
     const dbName = mongoose.connection.name;
     console.log(`MongoDB connection successful (${dbName}) [ENV: ${process.env.NODE_ENV || 'development'}]`);

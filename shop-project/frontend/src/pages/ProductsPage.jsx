@@ -1,20 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useInRouterContext, useSearchParams } from 'react-router-dom';
+import { Link, useInRouterContext, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Heart,
   Package,
   RefreshCw,
   RotateCcw,
   Search,
   ShoppingBag,
+  ShoppingCart,
   SlidersHorizontal,
   Star,
   X,
 } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 
 const CATEGORIES = ['Tất cả', 'Áo', 'Quần', 'Váy', 'Áo khoác', 'Phụ kiện', 'Giày dép', 'Khác'];
 
@@ -49,6 +53,64 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
   const [localMaxPrice, setLocalMaxPrice] = useState(urlMaxPrice);
   const [isDebouncing, setIsDebouncing] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const { user } = useAuth();
+  const { addToCart } = useCart();
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const [addingCartId, setAddingCartId] = useState(null);
+
+  // Fetch favorite product IDs if logged in
+  useEffect(() => {
+    if (user) {
+      api.get('/api/favorites/ids')
+        .then((res) => {
+          if (res.data?.success) {
+            setFavoriteIds(new Set(res.data.favoriteIds || []));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setFavoriteIds(new Set());
+    }
+  }, [user]);
+
+  const handleAddToCart = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để thêm vào giỏ hàng');
+      return;
+    }
+    setAddingCartId(productId);
+    await addToCart(productId, 1);
+    setAddingCartId(null);
+  };
+
+  const handleToggleFavorite = async (e, productId, productName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.error('Vui lòng đăng nhập để lưu sản phẩm yêu thích');
+      return;
+    }
+    try {
+      const res = await api.post('/api/favorites/toggle', { productId });
+      if (res.data?.success) {
+        setFavoriteIds((prev) => {
+          const next = new Set(prev);
+          if (res.data.isFavorite) {
+            next.add(productId);
+          } else {
+            next.delete(productId);
+          }
+          return next;
+        });
+        toast.success(res.data.message || (res.data.isFavorite ? 'Đã thêm vào yêu thích' : 'Đã bỏ yêu thích'));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Lỗi thao tác yêu thích');
+    }
+  };
 
   // Catalog state
   const [products, setProducts] = useState([]);
@@ -788,6 +850,7 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
                     : 0;
                   const isOutOfStock = product.stock <= 0;
+                  const hasVariants = (product.variants || []).some((v) => v.isActive !== false);
 
                   const thumbnail = Array.isArray(product.images) && product.images.length > 0
                     ? product.images[0]
@@ -877,6 +940,70 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                           {product.category}
                         </span>
 
+                        {/* Favorite button overlay */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleFavorite(e, id, product.name)}
+                          aria-label={favoriteIds.has(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                          title={favoriteIds.has(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                          style={{
+                            position: 'absolute',
+                            bottom: '10px',
+                            right: '10px',
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '50%',
+                            background: 'rgba(255, 255, 255, 0.95)',
+                            backdropFilter: 'blur(4px)',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                            zIndex: 2,
+                            transition: 'transform 0.15s ease',
+                          }}
+                        >
+                          <Heart
+                            size={18}
+                            fill={favoriteIds.has(id) ? '#ef4444' : 'none'}
+                            color={favoriteIds.has(id) ? '#ef4444' : '#64748b'}
+                          />
+                        </button>
+
+                        {/* Quick add to cart button overlay (ẩn với SP có phân loại — vào trang chi tiết để chọn) */}
+                        {!isOutOfStock && !hasVariants && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleAddToCart(e, id)}
+                            disabled={addingCartId === id}
+                            aria-label="Thêm vào giỏ hàng"
+                            title="Thêm vào giỏ hàng"
+                            style={{
+                              position: 'absolute',
+                              bottom: '10px',
+                              right: '52px',
+                              width: '34px',
+                              height: '34px',
+                              borderRadius: '50%',
+                              background: 'rgba(255, 255, 255, 0.95)',
+                              backdropFilter: 'blur(4px)',
+                              border: '1px solid #e2e8f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: addingCartId === id ? 'not-allowed' : 'pointer',
+                              color: '#15803d',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                              zIndex: 2,
+                              transition: 'transform 0.15s ease',
+                            }}
+                          >
+                            <ShoppingCart size={17} />
+                          </button>
+                        )}
+
                         {/* Out of stock overlay */}
                         {isOutOfStock && (
                           <div
@@ -952,13 +1079,7 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                         </div>
 
                         {/* Action Button */}
-                        <button
-                          type="button"
-                          className="btn-secondary"
-                          style={{ width: '100%', padding: '8px', fontSize: '13px', marginTop: '6px', justifyContent: 'center' }}
-                        >
-                          Xem Chi Tiết
-                        </button>
+                        <Link to={`/products/${id}`} className="btn-secondary" style={{ width: '100%', padding: '8px', fontSize: '13px', marginTop: '6px', justifyContent: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Xem Chi Tiết</Link>
                       </div>
                     </article>
                   );
@@ -996,3 +1117,4 @@ const ProductsPage = (props) => {
 };
 
 export default ProductsPage;
+

@@ -4,6 +4,50 @@ const Cart = require('../models/cartModel');
 const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
 
+const buildVariantLabel = (variant) => {
+  if (!variant) return '';
+  const parts = [variant.size, variant.color].filter(Boolean);
+  if (parts.length > 0) return parts.join(' / ');
+  return variant.sku || 'Phân loại';
+};
+
+// Trừ kho nguyên tử: variant -> arrayFilters, thường -> product.stock
+const decrementStock = async (productId, variant, qty) => {
+  if (variant) {
+    // $elemMatch ở query level: stock không đủ -> không match -> trả null
+    // (modifiedCount của updateOne không đáng tin khi arrayFilters trượt)
+    const updated = await Product.findOneAndUpdate(
+      {
+        _id: productId,
+        variants: {
+          $elemMatch: { _id: variant._id, stock: { $gte: qty }, isActive: true },
+        },
+      },
+      { $inc: { 'variants.$[v].stock': -qty } },
+      { arrayFilters: [{ 'v._id': variant._id }] }
+    );
+    return !!updated;
+  }
+  const updated = await Product.findOneAndUpdate(
+    { _id: productId, stock: { $gte: qty } },
+    { $inc: { stock: -qty } }
+  );
+  return !!updated;
+};
+
+// Hoàn kho khi hủy đơn
+const restockItem = async (productId, variantId, qty) => {
+  if (variantId) {
+    await Product.updateOne(
+      { _id: productId },
+      { $inc: { 'variants.$[v].stock': qty } },
+      { arrayFilters: [{ 'v._id': variantId }] }
+    );
+  } else {
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: qty } });
+  }
+};
+
 // POST /api/orders
 exports.createOrder = async (req, res) => {
   try {
@@ -35,6 +79,7 @@ exports.createOrder = async (req, res) => {
       orderItemsToProcess = userCart.items.map((i) => ({
         product: i.product._id,
         quantity: i.quantity,
+        variant: i.variant || null,
       }));
     }
 
@@ -42,10 +87,8 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Đơn hàng không có sản phẩm nào' });
     }
 
-    // Kiểm tra và khóa/trừ tồn kho
-    const finalOrderItems = [];
-    let itemsPrice = 0;
-
+    // Pass 1: kiểm tra sản phẩm & phân loại (variant) tồn tại, đang kinh doanh
+    const resolvedItems = [];
     for (const item of orderItemsToProcess) {
       const product = await Product.findById(item.product);
       if (!product || !product.isActive) {
@@ -55,26 +98,69 @@ exports.createOrder = async (req, res) => {
         });
       }
 
-      if (product.stock < item.quantity) {
+      const qty = parseInt(item.quantity, 10);
+      const variantId = item.variant || item.variantId || null;
+      let variant = null;
+      const activeVariants = (product.variants || []).filter((v) => v.isActive !== false);
+
+      if (variantId) {
+        variant = product.variants.id(variantId);
+        if (!variant || variant.isActive === false) {
+          return res.status(400).json({
+            success: false,
+            message: `Phân loại của sản phẩm "${product.name}" không tồn tại hoặc đã ngừng kinh doanh`,
+          });
+        }
+      } else if (activeVariants.length > 0) {
         return res.status(400).json({
           success: false,
-          message: `Sản phẩm "${product.name}" chỉ còn ${product.stock} trong kho, không đủ số lượng đặt`,
+          message: `Sản phẩm "${product.name}" có phân loại, vui lòng chọn phân loại trước khi đặt hàng`,
         });
       }
 
-      // Giảm tồn kho
-      product.stock -= item.quantity;
-      await product.save();
+      resolvedItems.push({ product, variant, quantity: qty });
+    }
 
-      const itemTotal = product.price * item.quantity;
+    // Pass 2: trừ kho nguyên tử — tránh oversell khi nhiều đơn đặt đồng thời.
+    // Nếu một item không đủ tồn kho thì hoàn lại phần đã trừ trước đó.
+    const finalOrderItems = [];
+    const decremented = [];
+    let itemsPrice = 0;
+
+    for (const { product, variant, quantity } of resolvedItems) {
+      const ok = await decrementStock(product._id, variant, quantity);
+
+      if (!ok) {
+        for (const d of decremented) {
+          await restockItem(d.product, d.variant, d.quantity);
+        }
+        const latest = await Product.findById(product._id).select('stock variants');
+        const label = buildVariantLabel(variant);
+        const remain = variant && latest
+          ? (latest.variants.id(variant._id)?.stock ?? 0)
+          : (latest ? latest.stock : 0);
+        return res.status(400).json({
+          success: false,
+          message: `Sản phẩm "${product.name}"${label ? ` (${label})` : ''} chỉ còn ${remain} trong kho, không đủ số lượng đặt`,
+        });
+      }
+
+      decremented.push({ product: product._id, variant: variant ? variant._id : null, quantity });
+
+      const unitPrice = variant && variant.price !== null && variant.price !== undefined
+        ? variant.price
+        : product.price;
+      const itemTotal = unitPrice * quantity;
       itemsPrice += itemTotal;
 
       finalOrderItems.push({
         product: product._id,
         name: product.name,
-        price: product.price,
-        quantity: item.quantity,
+        price: unitPrice,
+        quantity,
         image: product.images && product.images.length > 0 ? product.images[0] : '',
+        variant: variant ? variant._id : null,
+        variantLabel: buildVariantLabel(variant),
       });
     }
 
@@ -87,35 +173,44 @@ exports.createOrder = async (req, res) => {
 
     if (couponCode) {
       const cleanCode = couponCode.trim().toUpperCase();
-      const coupon = await Coupon.findOne({
-        code: cleanCode,
-        isActive: true,
-      });
+      const coupon = await Coupon.findOne({ code: cleanCode });
 
       if (coupon) {
         const now = new Date();
-        const isValidDate = (!coupon.startDate || new Date(coupon.startDate) <= now) &&
-                            (!coupon.endDate || new Date(coupon.endDate) >= now);
+        const isValidDate = !coupon.expiryDate || new Date(coupon.expiryDate) >= now;
         const meetsMinOrder = !coupon.minOrderValue || itemsPrice >= coupon.minOrderValue;
 
-        if (isValidDate && meetsMinOrder) {
+        // Kiểm tra xem khách hàng đã từng dùng mã này chưa
+        const userDoc = await User.findById(req.user._id);
+        const usedCoupons = userDoc?.usedCoupons || [];
+        const isAlreadyUsed = usedCoupons.some(
+          (item) => item.toString() === coupon._id.toString() || item.toString() === cleanCode
+        );
+
+        // Kiểm tra giới hạn lượt dùng trên toàn hệ thống
+        const currentUsedCount = await Order.countDocuments({
+          'coupon.code': cleanCode,
+          status: { $ne: 'Cancelled' },
+        });
+        const hasUsageLeft =
+          coupon.usageLimit === null ||
+          coupon.usageLimit === undefined ||
+          coupon.usageLimit <= 0 ||
+          currentUsedCount < coupon.usageLimit;
+
+        if (isValidDate && meetsMinOrder && !isAlreadyUsed && hasUsageLeft) {
           if (coupon.discountType === 'percentage') {
             discountAmount = Math.round((itemsPrice * coupon.discountValue) / 100);
-            if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
-              discountAmount = coupon.maxDiscount;
-            }
           } else {
-            discountAmount = coupon.discountValue;
+            discountAmount = Math.min(coupon.discountValue, itemsPrice);
           }
           appliedCoupon = { code: cleanCode, discountAmount };
-          // Cập nhật lượt dùng
-          coupon.usedCount = (coupon.usedCount || 0) + 1;
-          await coupon.save();
 
-          // Lưu vào usedCoupons của user
+          // Lưu vào usedCoupons của user và tăng usedCount của coupon
           await User.findByIdAndUpdate(req.user._id, {
             $addToSet: { usedCoupons: coupon._id },
           });
+          await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
         }
       }
     }
@@ -237,9 +332,7 @@ exports.cancelMyOrder = async (req, res) => {
 
     // Hoàn lại số lượng tồn kho
     for (const item of order.orderItems) {
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { stock: item.quantity },
-      });
+      await restockItem(item.product, item.variant, item.quantity);
     }
 
     order.status = 'Cancelled';
@@ -336,9 +429,7 @@ exports.updateOrderStatus = async (req, res) => {
     // Nếu đơn chuyển sang Cancelled từ trạng thái chưa giao -> hoàn lại tồn kho
     if (status === 'Cancelled' && prevStatus !== 'Cancelled' && prevStatus !== 'Delivered') {
       for (const item of order.orderItems) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: item.quantity },
-        });
+        await restockItem(item.product, item.variant, item.quantity);
       }
       order.cancelledAt = new Date();
       order.cancelReason = note || 'Nhân viên hủy đơn hàng';

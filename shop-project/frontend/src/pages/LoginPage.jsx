@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight, Shield, UserCheck, User } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -21,6 +21,9 @@ const LoginPage = () => {
     setLoading(false);
 
     if (res.success) {
+      // Phân quyền chuyển hướng sau khi đăng nhập:
+      // - Admin và Staff: mặc định vào /admin/dashboard
+      // - Customer: chuyển về trang chủ /
       if (res.user?.role === 'admin' || res.user?.role === 'staff') {
         navigate('/admin/dashboard', { replace: true });
       } else {
@@ -29,10 +32,9 @@ const LoginPage = () => {
     }
   };
 
-  // Nút điền nhanh tài khoản test đã tạo
-  const handleQuickFill = () => {
-    setEmail('bao@shop.com');
-    setPassword('password123');
+  const handleQuickFill = (testEmail, testPassword) => {
+    setEmail(testEmail);
+    setPassword(testPassword);
   };
 
   return (
@@ -43,7 +45,7 @@ const LoginPage = () => {
             <LogIn size={26} />
           </div>
           <h2 className="auth-title">Chào Mừng Trở Lại</h2>
-          <p className="auth-subtitle">Đăng nhập tài khoản để tiếp tục trải nghiệm mua sắm</p>
+          <p className="auth-subtitle">Đăng nhập tài khoản để tiếp tục trải nghiệm</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -62,10 +64,7 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group">
-            <div className="label-with-link">
-              <label>Mật khẩu</label>
-              <a href="#forgot" className="forgot-link">Quên mật khẩu?</a>
-            </div>
+            <label>Mật khẩu</label>
             <div className="input-with-icon">
               <Lock className="field-icon" size={18} />
               <input
@@ -100,6 +99,42 @@ const LoginPage = () => {
             )}
           </button>
         </form>
+
+        {/* Khối tiện ích điền nhanh tài khoản kiểm thử chuẩn */}
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
+          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', textAlign: 'center', fontWeight: 600 }}>
+            Tài khoản kiểm thử nhanh:
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
+              onClick={() => handleQuickFill('admin@shop.com', 'admin123')}
+            >
+              <Shield size={14} color="#7c3aed" />
+              <strong>Admin</strong>
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
+              onClick={() => handleQuickFill('staff@shop.com', 'staff123')}
+            >
+              <UserCheck size={14} color="#0284c7" />
+              <strong>Staff</strong>
+            </button>
+            <button
+              type="button"
+              className="btn-outline"
+              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
+              onClick={() => handleQuickFill('customer@shop.com', 'password123')}
+            >
+              <User size={14} color="#16a34a" />
+              <strong>Customer</strong>
+            </button>
+          </div>
+        </div>
 
         <div className="auth-footer">
           <span>Chưa có tài khoản? </span>
