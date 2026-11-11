@@ -83,21 +83,23 @@ const WishlistPage = () => {
                 <Trash2 size={16} />
               </button>
 
-              <div style={{ height: '240px', background: '#f8fafc', overflow: 'hidden' }}>
+              <Link to={`/products/${product._id}`} style={{ height: '240px', background: '#f8fafc', overflow: 'hidden', display: 'block' }}>
                 <img
                   src={product.images && product.images[0] ? product.images[0] : 'https://placehold.co/300x350?text=No+Image'}
                   alt={product.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
-              </div>
+              </Link>
 
               <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
                   {product.category || 'Thời trang'}
                 </span>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', flex: 1 }}>
-                  {product.name}
-                </h3>
+                <Link to={`/products/${product._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', margin: '0 0 8px', flex: 1 }}>
+                    {product.name}
+                  </h3>
+                </Link>
 
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '14px' }}>
                   <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>

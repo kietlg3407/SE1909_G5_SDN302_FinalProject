@@ -432,6 +432,79 @@ const checkReviewEligibility = async (req, res) => {
   }
 };
 
+/**
+ * @desc Lấy danh sách đánh giá của khách hàng hiện tại (đã đánh giá và chưa đánh giá)
+ * @route GET /api/reviews/my-reviews
+ * @access Private (Customer)
+ */
+const getMyReviews = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Lấy tất cả đánh giá mà người dùng này đã gửi
+    const reviewed = await Review.find({ user: userId })
+      .populate('product', 'name price originalPrice images category')
+      .populate('respondedBy', 'name role')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Tập hợp ID các sản phẩm đã được đánh giá
+    const reviewedProductIds = new Set(
+      reviewed
+        .map((r) => (r.product?._id ? r.product._id.toString() : (r.product ? r.product.toString() : null)))
+        .filter(Boolean)
+    );
+
+    // 2. Lấy tất cả đơn hàng đã giao thành công (Delivered) của người dùng
+    const deliveredOrders = await Order.find({
+      user: userId,
+      status: 'Delivered',
+    })
+      .populate('orderItems.product', 'name price originalPrice images category')
+      .sort({ deliveredAt: -1, createdAt: -1 })
+      .lean();
+
+    // Tập hợp các sản phẩm trong đơn đã giao mà người dùng CHƯA đánh giá
+    const unreviewedMap = new Map();
+
+    deliveredOrders.forEach((order) => {
+      (order.orderItems || []).forEach((item) => {
+        const prod = item.product;
+        const prodId = prod?._id ? prod._id.toString() : (prod ? prod.toString() : null);
+        if (prodId && !reviewedProductIds.has(prodId) && !unreviewedMap.has(prodId)) {
+          unreviewedMap.set(prodId, {
+            product: prod && prod.name ? prod : {
+              _id: prodId,
+              name: item.name,
+              price: item.price,
+              images: item.image ? [item.image] : [],
+            },
+            orderId: order._id,
+            orderDate: order.deliveredAt || order.createdAt,
+            variantLabel: item.variantLabel,
+            price: item.price,
+            image: item.image,
+          });
+        }
+      });
+    });
+
+    const unreviewed = Array.from(unreviewedMap.values());
+
+    res.status(200).json({
+      success: true,
+      reviewed,
+      unreviewed,
+      counts: {
+        reviewed: reviewed.length,
+        unreviewed: unreviewed.length,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Lỗi tải danh sách đánh giá của bạn', error: error.message });
+  }
+};
+
 module.exports = {
   createReview,
   updateMyReview,
@@ -440,5 +513,6 @@ module.exports = {
   updateReviewStatus,
   deleteReview,
   checkReviewEligibility,
+  getMyReviews,
 };
 

@@ -7,10 +7,14 @@ const {
   updateReviewStatus,
   deleteReview,
   checkReviewEligibility,
+  getMyReviews,
 } = require('../controllers/reviewController');
 const { protect, isStaffOrAdmin } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
+
+// Private (Customer): Lấy danh sách đánh giá của tôi (đã đánh giá và chưa đánh giá)
+router.get('/my-reviews', protect, getMyReviews);
 
 // Public: Lấy đánh giá của 1 sản phẩm
 router.get('/product/:productId', getProductReviews);

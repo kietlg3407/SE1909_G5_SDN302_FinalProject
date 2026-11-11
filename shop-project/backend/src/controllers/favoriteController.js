@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Favorite = require('../models/favoriteModel');
+const Wishlist = require('../models/wishlistModel');
 const Product = require('../models/productModel');
 
 /**
@@ -27,6 +28,10 @@ const toggleFavorite = async (req, res) => {
 
     if (existingFavorite) {
       await existingFavorite.deleteOne();
+      await Wishlist.findOneAndUpdate(
+        { user: req.user._id },
+        { $pull: { products: productId } }
+      ).catch(() => {});
       return res.json({
         success: true,
         isFavorite: false,
@@ -39,6 +44,11 @@ const toggleFavorite = async (req, res) => {
       user: req.user._id,
       product: productId,
     });
+    await Wishlist.findOneAndUpdate(
+      { user: req.user._id },
+      { $addToSet: { products: productId } },
+      { upsert: true }
+    ).catch(() => {});
 
     return res.status(201).json({
       success: true,
@@ -126,6 +136,13 @@ const removeFavorite = async (req, res) => {
       user: req.user._id,
       product: productId,
     });
+
+    if (result) {
+      await Wishlist.findOneAndUpdate(
+        { user: req.user._id },
+        { $pull: { products: productId } }
+      ).catch(() => {});
+    }
 
     if (!result) {
       return res.status(404).json({ success: false, message: 'Sản phẩm không có trong danh sách yêu thích' });

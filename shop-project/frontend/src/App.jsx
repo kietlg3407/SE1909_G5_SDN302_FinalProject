@@ -29,6 +29,7 @@ import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import OrderDetailPage from './pages/OrderDetailPage';
+import MyReviewsPage from './pages/MyReviewsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import './index.css';
 
@@ -114,14 +115,7 @@ function App() {
               }
             />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-            <Route
-              path="/favorites"
-              element={
-                <ProtectedRoute>
-                  <FavoritesPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/favorites" element={<Navigate to="/wishlist" replace />} />
             <Route
               path="/cart"
               element={
@@ -159,6 +153,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrderDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-reviews"
+              element={
+                <ProtectedRoute>
+                  <MyReviewsPage />
                 </ProtectedRoute>
               }
             />

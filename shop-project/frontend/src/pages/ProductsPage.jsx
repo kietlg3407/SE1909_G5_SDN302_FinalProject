@@ -55,24 +55,8 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const { user } = useAuth();
-  const { addToCart } = useCart();
-  const [favoriteIds, setFavoriteIds] = useState(new Set());
+  const { addToCart, isInWishlist, addToWishlist, removeFromWishlist } = useCart();
   const [addingCartId, setAddingCartId] = useState(null);
-
-  // Fetch favorite product IDs if logged in
-  useEffect(() => {
-    if (user) {
-      api.get('/api/favorites/ids')
-        .then((res) => {
-          if (res.data?.success) {
-            setFavoriteIds(new Set(res.data.favoriteIds || []));
-          }
-        })
-        .catch(() => {});
-    } else {
-      setFavoriteIds(new Set());
-    }
-  }, [user]);
 
   const handleAddToCart = async (e, productId) => {
     e.preventDefault();
@@ -93,22 +77,10 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
       toast.error('Vui lòng đăng nhập để lưu sản phẩm yêu thích');
       return;
     }
-    try {
-      const res = await api.post('/api/favorites/toggle', { productId });
-      if (res.data?.success) {
-        setFavoriteIds((prev) => {
-          const next = new Set(prev);
-          if (res.data.isFavorite) {
-            next.add(productId);
-          } else {
-            next.delete(productId);
-          }
-          return next;
-        });
-        toast.success(res.data.message || (res.data.isFavorite ? 'Đã thêm vào yêu thích' : 'Đã bỏ yêu thích'));
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Lỗi thao tác yêu thích');
+    if (isInWishlist(productId)) {
+      await removeFromWishlist(productId);
+    } else {
+      await addToWishlist(productId);
     }
   };
 
@@ -944,8 +916,8 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                         <button
                           type="button"
                           onClick={(e) => handleToggleFavorite(e, id, product.name)}
-                          aria-label={favoriteIds.has(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                          title={favoriteIds.has(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                          aria-label={isInWishlist(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+                          title={isInWishlist(id) ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
                           style={{
                             position: 'absolute',
                             bottom: '10px',
@@ -955,7 +927,7 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                             borderRadius: '50%',
                             background: 'rgba(255, 255, 255, 0.95)',
                             backdropFilter: 'blur(4px)',
-                            border: '1px solid #e2e8f0',
+                            border: isInWishlist(id) ? '1px solid #fecaca' : '1px solid #e2e8f0',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -967,8 +939,8 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                         >
                           <Heart
                             size={18}
-                            fill={favoriteIds.has(id) ? '#ef4444' : 'none'}
-                            color={favoriteIds.has(id) ? '#ef4444' : '#64748b'}
+                            fill={isInWishlist(id) ? '#ef4444' : 'none'}
+                            color={isInWishlist(id) ? '#ef4444' : '#64748b'}
                           />
                         </button>
 

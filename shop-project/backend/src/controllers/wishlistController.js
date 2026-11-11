@@ -1,6 +1,7 @@
 const Wishlist = require('../models/wishlistModel');
 const Product = require('../models/productModel');
 const Cart = require('../models/cartModel');
+const Favorite = require('../models/favoriteModel');
 
 // GET /api/wishlist
 exports.getWishlist = async (req, res) => {
@@ -59,6 +60,13 @@ exports.addToWishlist = async (req, res) => {
       await wishlist.save();
     }
 
+    // Sync with Favorite collection
+    await Favorite.findOneAndUpdate(
+      { user: req.user._id, product: productId },
+      { user: req.user._id, product: productId },
+      { upsert: true }
+    ).catch(() => {});
+
     wishlist = await wishlist.populate({
       path: 'products',
       select: 'name price originalPrice images stock category isActive variants',
@@ -87,6 +95,10 @@ exports.removeFromWishlist = async (req, res) => {
         (p) => p.toString() !== productId.toString()
       );
       await wishlist.save();
+      await Favorite.findOneAndDelete({
+        user: req.user._id,
+        product: productId,
+      }).catch(() => {});
       wishlist = await wishlist.populate({
         path: 'products',
         select: 'name price originalPrice images stock category isActive variants',
@@ -178,6 +190,10 @@ exports.moveToCart = async (req, res) => {
         (p) => p.toString() !== productId.toString()
       );
       await wishlist.save();
+      await Favorite.findOneAndDelete({
+        user: req.user._id,
+        product: productId,
+      }).catch(() => {});
     }
 
     res.status(200).json({

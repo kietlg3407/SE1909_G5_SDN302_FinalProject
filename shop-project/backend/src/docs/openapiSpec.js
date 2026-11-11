@@ -300,6 +300,9 @@ const endpoints = [
     responses: { 200: json('Đã xóa') },
   }),
 
+  endpoint('get', '/api/my-reviews', 'Đánh giá', 'Lấy danh sách đánh giá của tôi (router reviews mount tại /api)', 'user', {
+    responses: { 200: json('Danh sách đã đánh giá và chưa đánh giá') },
+  }),
   endpoint('get', '/api/product/{productId}', 'Đánh giá', 'Lấy đánh giá của sản phẩm (router reviews mount tại /api)', 'public', {
     query: [q('page', 'Trang', { type: 'integer' }), q('limit', 'Kích thước trang', { type: 'integer' }), q('rating', 'Lọc theo số sao', { type: 'integer' })],
     responses: { 200: json('Danh sách đánh giá') },
@@ -423,6 +426,9 @@ const endpoints = [
     responses: { 200: json('Đã xóa'), 404: json('Không tìm thấy'), 409: json('Đang được sản phẩm dùng') },
   }),
 
+  endpoint('get', '/api/reviews/my-reviews', 'Đánh giá', 'Lấy danh sách đánh giá của tôi', 'user', {
+    responses: { 200: json('Danh sách đã đánh giá và chưa đánh giá') },
+  }),
   endpoint('get', '/api/reviews/product/{productId}', 'Đánh giá', 'Lấy đánh giá của một sản phẩm', 'public', {
     query: [q('page', 'Trang', { type: 'integer' }), q('limit', 'Kích thước trang', { type: 'integer' }), q('rating', 'Lọc theo số sao', { type: 'integer' })],
     responses: { 200: json('Danh sách đánh giá') },

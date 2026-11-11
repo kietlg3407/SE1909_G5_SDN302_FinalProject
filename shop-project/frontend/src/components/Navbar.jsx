@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { User, LogOut, ShoppingBag, ShoppingCart, Menu, X, ShieldCheck, Heart, ClipboardList } from 'lucide-react';
+import { User, LogOut, ShoppingBag, ShoppingCart, Menu, X, ShieldCheck, Heart, ClipboardList, Star } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAuthenticated, isAdmin, isStaff } = useAuth();
@@ -104,15 +104,15 @@ const Navbar = () => {
                     </Link>
                     <Link to="/wishlist" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
                       <Heart size={16} color="#ef4444" />
-                      <span>Wishlist ({wishlistCount})</span>
+                      <span>Sản phẩm yêu thích ({wishlistCount})</span>
                     </Link>
                     <Link to="/orders" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
                       <ClipboardList size={16} />
                       <span>Đơn hàng của tôi</span>
                     </Link>
-                    <Link to="/favorites" className="dropdown-item">
-                      <Heart size={16} color="#ef4444" />
-                      <span>Sản phẩm yêu thích</span>
+                    <Link to="/my-reviews" className="dropdown-item" onClick={() => setDropdownOpen(false)}>
+                      <Star size={16} color="#f59e0b" fill="#f59e0b" />
+                      <span>Đánh giá của tôi</span>
                     </Link>
                     <Link to="/profile" className="dropdown-item">
                       <User size={16} />
@@ -229,13 +229,13 @@ const Navbar = () => {
                 Giỏ Hàng ({cartCount})
               </Link>
               <Link to="/wishlist" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                Wishlist ({wishlistCount})
+                Sản Phẩm Yêu Thích ({wishlistCount})
               </Link>
               <Link to="/orders" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                 Đơn Hàng Của Tôi
               </Link>
-              <Link to="/favorites" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                Sản Phẩm Yêu Thích
+              <Link to="/my-reviews" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                Đánh Giá Của Tôi
               </Link>
               <Link to="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
                 Hồ Sơ Cá Nhân
