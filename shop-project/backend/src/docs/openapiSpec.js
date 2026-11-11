@@ -360,6 +360,20 @@ const endpoints = [
     responses: { 200: json('Đã xóa'), 400: json('Không được xóa WELCOME10'), 404: json('Không tìm thấy') },
   }),
 
+  endpoint('post', '/api/products/upload', 'Sản phẩm', 'Tải lên hình ảnh sản phẩm từ máy tính', 'staff', {
+    body: {
+      required: true,
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: { images: { type: 'string', format: 'binary', description: 'File ảnh (JPEG, PNG, WEBP), tối đa 10MB' } },
+          },
+        },
+      },
+    },
+    responses: { 200: json('Danh sách đường dẫn ảnh đã tải lên'), 400: json('Chưa chọn ảnh hoặc file không hợp lệ') },
+  }),
   endpoint('get', '/api/products', 'Sản phẩm', 'Danh sách sản phẩm, có tìm kiếm, lọc, sắp xếp và phân trang', 'optional', {
     query: productQuery,
     responses: { 200: json('Danh sách và thông tin phân trang') },

@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Search,
   Trash2,
+  Upload,
   X,
   XCircle,
 } from 'lucide-react';
@@ -26,6 +27,17 @@ const SORT_OPTIONS = [
   { label: 'Tên: A đến Z', value: 'name_asc' },
 ];
 
+export const parseImagesList = (imgs) => {
+  if (Array.isArray(imgs)) return imgs.filter(Boolean);
+  if (typeof imgs === 'string' && imgs.trim()) {
+    return imgs
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
+
 const INITIAL_FORM = {
   name: '',
   category: 'Áo',
@@ -33,7 +45,7 @@ const INITIAL_FORM = {
   price: '',
   originalPrice: '',
   stock: '',
-  images: '',
+  images: [],
   description: '',
   isActive: true,
 };
@@ -72,6 +84,9 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [manualUrl, setManualUrl] = useState('');
 
   // Status toggle & Delete dialog states
   const [togglingId, setTogglingId] = useState(null);
@@ -196,12 +211,16 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
   const handleOpenCreateModal = () => {
     setEditingProduct(null);
     setFormData(INITIAL_FORM);
+    setShowUrlInput(false);
+    setManualUrl('');
     setShowModal(true);
   };
 
   // Open modal for Edit
   const handleOpenEditModal = (product) => {
     setEditingProduct(product);
+    setShowUrlInput(false);
+    setManualUrl('');
     setFormData({
       name: product.name || '',
       category: product.category || 'Áo',
@@ -209,11 +228,95 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
       price: product.price ?? '',
       originalPrice: product.originalPrice ?? '',
       stock: product.stock ?? '',
-      images: Array.isArray(product.images) ? product.images.join(', ') : (product.images || ''),
+      images: parseImagesList(product.images),
       description: product.description || '',
       isActive: product.isActive !== false,
     });
     setShowModal(true);
+  };
+
+  // Xử lý chọn file ảnh từ máy tính
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const validFiles = [];
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        toast.error(`File "${file.name}" không phải là ảnh hợp lệ`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File "${file.name}" vượt quá kích thước tối đa 10MB`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (!validFiles.length) return;
+
+    try {
+      setUploadingImage(true);
+
+      // 1. Thử tải file lên backend lưu trữ trong thư mục /uploads
+      let uploadedUrls = [];
+      try {
+        const uploadData = new FormData();
+        validFiles.forEach((f) => uploadData.append('images', f));
+        const res = await api.post('/api/products/upload', uploadData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (res.data?.success && Array.isArray(res.data?.urls) && res.data.urls.length > 0) {
+          uploadedUrls = res.data.urls;
+        }
+      } catch (_) {
+        // Dự phòng nếu không hỗ trợ multipart
+      }
+
+      // 2. Dự phòng: Đọc file thành Data URL (Base64) hiển thị trực tiếp
+      if (!uploadedUrls.length) {
+        const dataUrlPromises = validFiles.map((file) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => resolve(ev.target?.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          });
+        });
+        const results = await Promise.all(dataUrlPromises);
+        uploadedUrls = results.filter(Boolean);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          images: [...parseImagesList(prev.images), ...uploadedUrls],
+        }));
+        toast.success(`Đã thêm ${uploadedUrls.length} ảnh từ máy tính`);
+      }
+    } catch (err) {
+      toast.error('Lỗi khi tải ảnh từ máy tính');
+    } finally {
+      setUploadingImage(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: parseImagesList(prev.images).filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleAddManualUrl = () => {
+    if (!manualUrl.trim()) return;
+    setFormData((prev) => ({
+      ...prev,
+      images: [...parseImagesList(prev.images), manualUrl.trim()],
+    }));
+    setManualUrl('');
+    toast.success('Đã thêm liên kết ảnh');
   };
 
   // 1-Click Toggle Active Status
@@ -265,12 +368,7 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
       return;
     }
 
-    const imageArray = formData.images
-      ? formData.images
-          .split(',')
-          .map((img) => img.trim())
-          .filter(Boolean)
-      : [];
+    const imageArray = parseImagesList(formData.images);
 
     const payload = {
       name: formData.name.trim(),
@@ -979,33 +1077,218 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                 </div>
               </div>
 
-              {/* Images URL */}
-              <div className="form-group">
-                <label htmlFor="product-images" style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                  Đường dẫn ảnh (URL)
-                </label>
-                <input
-                  id="product-images"
-                  type="text"
-                  placeholder="https://images.unsplash.com/... (phân tách nhiều ảnh bằng dấu phẩy)"
-                  value={formData.images}
-                  onChange={(e) => setFormData({ ...formData, images: e.target.value })}
-                />
-                {formData.images && (
-                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #cbd5e1', background: '#f8fafc' }}>
-                      <img
-                        src={formData.images.split(',')[0].trim()}
-                        alt="Xem trước"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+              {/* Image Upload from Computer */}
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label htmlFor="product-file-upload" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                    Hình ảnh sản phẩm (Tải file từ máy)
+                  </label>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    {parseImagesList(formData.images).length > 0
+                      ? `${parseImagesList(formData.images).length} ảnh đã chọn`
+                      : 'Chưa có ảnh'}
+                  </span>
+                </div>
+
+                {/* Dropzone / Upload area */}
+                <label
+                  htmlFor="product-file-upload"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '18px 16px',
+                    border: '2px dashed #cbd5e1',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease',
+                    textAlign: 'center',
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#0f172a';
+                    e.currentTarget.style.background = '#f1f5f9';
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.background = '#f8fafc';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.style.borderColor = '#cbd5e1';
+                    e.currentTarget.style.background = '#f8fafc';
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      handleFileSelect({ target: { files: e.dataTransfer.files, value: '' } });
+                    }
+                  }}
+                >
+                  <input
+                    id="product-file-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={uploadingImage}
+                    onChange={handleFileSelect}
+                    style={{ display: 'none' }}
+                  />
+                  {uploadingImage ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px' }}>
+                      <RefreshCw size={18} className="admin-users-spin" />
+                      <span>Đang xử lý ảnh từ máy tính...</span>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>Ảnh xem trước</span>
+                  ) : (
+                    <>
+                      <Upload size={26} color="#64748b" style={{ marginBottom: '6px' }} />
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a', marginBottom: '2px' }}>
+                        Nhấn để chọn ảnh từ máy tính
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        Hỗ trợ PNG, JPG, JPEG, WEBP (chọn được nhiều ảnh, tối đa 10MB)
+                      </div>
+                    </>
+                  )}
+                </label>
+
+                {/* Previews Grid */}
+                {parseImagesList(formData.images).length > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))',
+                        gap: '10px',
+                        padding: '10px',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      {parseImagesList(formData.images).map((imgUrl, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            position: 'relative',
+                            width: '100%',
+                            paddingTop: '100%',
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            border: idx === 0 ? '2px solid #0f172a' : '1px solid #cbd5e1',
+                            background: '#ffffff',
+                          }}
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Ảnh ${idx + 1}`}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          {idx === 0 && (
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: '4px',
+                                left: '4px',
+                                background: 'rgba(15, 23, 42, 0.85)',
+                                color: '#ffffff',
+                                fontSize: '10px',
+                                fontWeight: 700,
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              Ảnh chính
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              handleRemoveImage(idx);
+                            }}
+                            aria-label={`Xóa ảnh ${idx + 1}`}
+                            title="Xóa ảnh này"
+                            style={{
+                              position: 'absolute',
+                              top: '4px',
+                              right: '4px',
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '50%',
+                              background: '#ef4444',
+                              color: '#ffffff',
+                              border: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              padding: 0,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {/* Optional toggle for URL input */}
+                <div style={{ marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(!showUrlInput)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#475569',
+                      fontSize: '12px',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    {showUrlInput ? 'Ẩn ô nhập URL ảnh' : '+ Hoặc thêm ảnh bằng đường dẫn URL'}
+                  </button>
+                  {showUrlInput && (
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                      <input
+                        type="url"
+                        placeholder="https://example.com/image.jpg"
+                        value={manualUrl}
+                        onChange={(e) => setManualUrl(e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '13px',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={handleAddManualUrl}
+                        style={{ padding: '8px 14px', fontSize: '12px' }}
+                      >
+                        Thêm
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Description */}

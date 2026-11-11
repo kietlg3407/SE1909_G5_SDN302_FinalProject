@@ -32,7 +32,7 @@ info:
 
     \r
 
-    Hệ thống đăng ký đúng 95 endpoint. Mỗi endpoint là một cặp phương thức HTTP
+    Hệ thống đăng ký đúng 96 endpoint. Mỗi endpoint là một cặp phương thức HTTP
     và đường dẫn sau khi gắn prefix trong server.js. Router đánh giá được mount
     tại /api và /api/reviews, mỗi nơi 8 đường dẫn. Router bình luận được mount
     tại /api và /api/comments; 5 handler gắn tại /api trùng phương thức và đường
@@ -56,7 +56,7 @@ info:
 
     - Mã giảm giá: 6\r
 
-    - Sản phẩm: 8\r
+    - Sản phẩm: 9\r
 
     - Danh mục: 5\r
 
@@ -1796,6 +1796,56 @@ paths:
           schema:
             type: string
             description: Định danh
+  /api/products/upload:
+    post:
+      tags:
+        - Sản phẩm
+      summary: Tải lên hình ảnh sản phẩm từ máy tính
+      description: Yêu cầu Bearer JWT của staff hoặc admin.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Danh sách đường dẫn ảnh đã tải lên
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Chưa chọn ảnh hoặc file không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Thiếu token, token hết hạn hoặc mật khẩu đã đổi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Không đủ quyền
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Lỗi hệ thống
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: string
+                  format: binary
+                  description: File ảnh (JPEG, PNG, WEBP), tối đa 10MB
   /api/products:
     get:
       tags:
