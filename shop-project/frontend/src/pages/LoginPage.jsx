@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight, Shield, UserCheck, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -32,11 +32,6 @@ const LoginPage = () => {
     }
   };
 
-  const handleQuickFill = (testEmail, testPassword) => {
-    setEmail(testEmail);
-    setPassword(testPassword);
-  };
-
   return (
     <div className="auth-page-container">
       <div className="auth-card animate-fade-in">
@@ -64,7 +59,10 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group">
-            <label>Mật khẩu</label>
+            <div className="label-with-link">
+              <label>Mật khẩu</label>
+              <Link to="/forgot-password" className="forgot-link">Quên mật khẩu?</Link>
+            </div>
             <div className="input-with-icon">
               <Lock className="field-icon" size={18} />
               <input
@@ -99,42 +97,6 @@ const LoginPage = () => {
             )}
           </button>
         </form>
-
-        {/* Khối tiện ích điền nhanh tài khoản kiểm thử chuẩn */}
-        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0' }}>
-          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '10px', textAlign: 'center', fontWeight: 600 }}>
-            Tài khoản kiểm thử nhanh:
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
-              onClick={() => handleQuickFill('admin@shop.com', 'admin123')}
-            >
-              <Shield size={14} color="#7c3aed" />
-              <strong>Admin</strong>
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
-              onClick={() => handleQuickFill('staff@shop.com', 'staff123')}
-            >
-              <UserCheck size={14} color="#0284c7" />
-              <strong>Staff</strong>
-            </button>
-            <button
-              type="button"
-              className="btn-outline"
-              style={{ fontSize: '11px', padding: '6px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}
-              onClick={() => handleQuickFill('customer@shop.com', 'password123')}
-            >
-              <User size={14} color="#16a34a" />
-              <strong>Customer</strong>
-            </button>
-          </div>
-        </div>
 
         <div className="auth-footer">
           <span>Chưa có tài khoản? </span>

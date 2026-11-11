@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Coupon = require('../models/couponModel');
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
+const { sendPasswordResetEmail } = require('../utils/mailer');
 
 // Regex kiểm tra định dạng email và số điện thoại Việt Nam chuẩn
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -165,6 +167,96 @@ const loginUser = async (req, res) => {
 const logoutUser = (req, res) => {
   res.clearCookie('admin_token', ADMIN_COOKIE_OPTIONS);
   res.json({ message: 'Đăng xuất thành công' });
+};
+
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+const GENERIC_RESET_MESSAGE =
+  'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu. Vui lòng kiểm tra hộp thư.';
+
+const hashResetToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+// @desc    Gửi email đặt lại mật khẩu (không tiết lộ email có tồn tại hay không)
+// @route   POST /api/users/forgot-password
+// @access  Public
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Vui lòng nhập email' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(cleanEmail)) {
+      return res.status(400).json({ message: 'Định dạng email không hợp lệ' });
+    }
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      user.passwordResetToken = hashResetToken(rawToken);
+      user.passwordResetExpires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+      await user.save();
+
+      const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '');
+      const resetUrl = `${clientUrl}/reset-password/${rawToken}`;
+
+      try {
+        await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl });
+      } catch (mailError) {
+        console.error('[forgotPassword mail Error]:', mailError.message);
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        try {
+          await user.save();
+        } catch (cleanupError) {
+          console.error('[forgotPassword cleanup Error]:', cleanupError.message);
+        }
+      }
+    }
+
+    return res.json({ message: GENERIC_RESET_MESSAGE });
+  } catch (error) {
+    console.error('[forgotPassword Error]:', error);
+    return res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi xử lý yêu cầu đặt lại mật khẩu' });
+  }
+};
+
+// @desc    Đặt mật khẩu mới bằng token một lần (hết hạn sau 15 phút)
+// @route   POST /api/users/reset-password/:token
+// @access  Public
+const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body || {};
+
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({ message: 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn' });
+    }
+
+    if (typeof password !== 'string' || password.length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu phải có ít nhất 6 ký tự' });
+    }
+
+    const user = await User.findOne({
+      passwordResetToken: hashResetToken(token),
+      passwordResetExpires: { $gt: new Date() },
+    }).select('+passwordResetToken +passwordResetExpires');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn' });
+    }
+
+    user.password = password;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return res.json({ message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.' });
+  } catch (error) {
+    console.error('[resetPassword Error]:', error);
+    return res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi đặt lại mật khẩu' });
+  }
 };
 
 // =================== 2. USER PROFILE (HỒ SƠ CÁ NHÂN) ===================
@@ -553,6 +645,8 @@ module.exports = {
   registerUser,
   loginUser,
   logoutUser,
+  forgotPassword,
+  resetPassword,
   getUserProfile,
   updateUserProfile,
   changePassword,
