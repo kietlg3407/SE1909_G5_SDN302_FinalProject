@@ -17,6 +17,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import api from '../../services/api';
+import ProductThumbnail from '../../components/ProductThumbnail';
 
 const CATEGORIES = ['Áo', 'Quần', 'Váy', 'Áo khoác', 'Phụ kiện', 'Giày dép', 'Khác'];
 
@@ -295,7 +296,7 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
         }));
         toast.success(`Đã thêm ${uploadedUrls.length} ảnh từ máy tính`);
       }
-    } catch (err) {
+    } catch {
       toast.error('Lỗi khi tải ảnh từ máy tính');
     } finally {
       setUploadingImage(false);
@@ -692,18 +693,7 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                               border: '1px solid #e2e8f0',
                             }}
                           >
-                            {thumbnail ? (
-                              <img
-                                src={thumbnail}
-                                alt={product.name}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <Package size={20} color="#94a3b8" />
-                            )}
+                            <ProductThumbnail src={thumbnail} alt={product.name} iconSize={20} />
                           </div>
                         </td>
 
@@ -1182,21 +1172,9 @@ const AdminProductsContent = ({ searchParams, setSearchParams }) => {
                             background: '#ffffff',
                           }}
                         >
-                          <img
-                            src={imgUrl}
-                            alt={`Ảnh ${idx + 1}`}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
+                          <div style={{ position: 'absolute', inset: 0 }}>
+                            <ProductThumbnail src={imgUrl} alt={`Ảnh ${idx + 1}`} iconSize={22} />
+                          </div>
                           {idx === 0 && (
                             <span
                               style={{

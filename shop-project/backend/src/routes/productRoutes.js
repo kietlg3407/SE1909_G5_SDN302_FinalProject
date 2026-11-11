@@ -10,6 +10,7 @@ const {
   createProductVariant,
   updateProductVariant,
   deleteProductVariant,
+  uploadProductImages,
 } = require('../controllers/productController');
 const { protect, isStaffOrAdmin } = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');

@@ -424,4 +424,5 @@ module.exports = {
   createProductVariant,
   updateProductVariant,
   deleteProductVariant,
+  uploadProductImages,
 };

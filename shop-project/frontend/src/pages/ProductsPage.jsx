@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Filter,
   Heart,
-  Package,
   RefreshCw,
   RotateCcw,
   Search,
@@ -17,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
+import ProductThumbnail from '../components/ProductThumbnail';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 
@@ -882,25 +882,12 @@ const ProductsPageContent = ({ searchParams, setSearchParams }) => {
                           background: '#f8fafc',
                         }}
                       >
-                        {thumbnail ? (
-                          <img
-                            src={thumbnail}
-                            alt={product.name}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              transition: 'transform 0.35s ease',
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                            <Package size={44} />
-                          </div>
-                        )}
+                        <ProductThumbnail
+                          src={thumbnail}
+                          alt={product.name}
+                          iconSize={44}
+                          style={{ transition: 'transform 0.35s ease' }}
+                        />
 
                         {/* Top Badges */}
                         {hasDiscount && (
